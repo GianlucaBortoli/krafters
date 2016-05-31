@@ -3,7 +3,7 @@
     "id": 1,
     "address": "127.0.0.1",
     "port": 8881,
-    "interface":"lo"
+    "interface": "lo"
   },
   "peers": [
     {
