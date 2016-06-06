@@ -1,8 +1,9 @@
 import json
 import subprocess
 import logging
-
 import sys
+from SimpleXMLRPCServer import SimpleXMLRPCServer
+from SimpleXMLRPCServer import SimpleXMLRPCRequestHandler
 
 
 class NetemManager:
@@ -155,7 +156,7 @@ class NetemManager:
                 self.create_peer_qdisc(peer)
         else:
             exit(1)
-
+        return True
 
 def main():
     try:
@@ -168,12 +169,15 @@ def main():
 
     netem_manager = NetemManager(configuration["interface"], configuration["host"], configuration["peers"])
 
-    netem_manager.init_qdisc()
-
     # usage examples
-    netem_manager.modify_incoming_connection("2", "loss 90%")
-    netem_manager.modify_outgoing_connection("3", "delay 400ms")
-    netem_manager.modify_connection("4", "loss 50% delay 200ms 100ms")
+    # netem_manager.modify_incoming_connection("2", "loss 90%")
+    # netem_manager.modify_outgoing_connection("3", "delay 400ms")
+    # netem_manager.modify_connection("4", "loss 50% delay 200ms 100ms")
+
+    print configuration["rpcPort"]
+    server = SimpleXMLRPCServer((str(configuration["host"]["address"]), configuration["rpcPort"]))
+    server.register_instance(netem_manager)
+    server.serve_forever()
 
 
 if __name__ == "__main__":

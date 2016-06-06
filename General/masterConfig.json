@@ -3,30 +3,35 @@
       "id": 1,
       "address": "127.0.0.1",
       "port": 8881,
+      "rpcPort": 10001,
       "interface":"lo"
     },
     {
       "id": 2,
       "address": "127.0.0.1",
       "port": 8882,
+      "rpcPort": 10002,
       "interface":"lo"
     },
     {
       "id": 3,
       "address": "127.0.0.1",
       "port": 8883,
+      "rpcPort": 10003,
       "interface":"lo"
     },
     {
       "id": 4,
       "address": "127.0.0.1",
       "port": 8884,
+      "rpcPort": 10004,
       "interface":"lo"
     },
     {
       "id": 5,
       "address": "127.0.0.1",
       "port": 8885,
+      "rpcPort": 10005,
       "interface":"lo"
     }
   ]

@@ -6,6 +6,7 @@ import sys
 def create_configuration_files(peers, path):
     for peer in peers:
         data = {"interface": peer["interface"],
+                "rpcPort": peer["rpcPort"],
                 "host": {
                     "port": peer["port"],
                     "address": peer["address"],

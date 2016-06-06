@@ -1,5 +1,6 @@
 {
   "interface": "lo",
+  "rpcPort":10001,
   "host": {
     "id": 1,
     "address": "127.0.0.1",
