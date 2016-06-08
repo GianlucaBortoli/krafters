@@ -1,0 +1,20 @@
+{
+    "mode": "local",
+    "nodes": [
+        {
+            "id": 1,
+            "rpcPort": 42114,
+            "address": "127.0.0.1",
+            "interface": "lo",
+            "port": 35439
+        },
+        {
+            "id": 2,
+            "rpcPort": 41127,
+            "address": "127.0.0.1",
+            "interface": "lo",
+            "port": 42422
+        }
+    ],
+    "algorithm": "raft"
+}

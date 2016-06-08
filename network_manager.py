@@ -2,7 +2,7 @@ import json
 import subprocess
 import logging
 import sys
-from SimpleXMLRPCServer import SimpleXMLRPCServer
+from xmlrpc.server import SimpleXMLRPCServer
 
 
 class NetemManager:
@@ -63,7 +63,7 @@ class NetemManager:
     def run_commands(self, commands, substitution_map={}):
         error = ""
         for command in commands:
-            for token, value in substitution_map.iteritems():
+            for token, value in substitution_map.items():
                 command = command.replace(token, value)
             e = self.run(command)
             if e:
@@ -152,15 +152,8 @@ class NetemManager:
             result = result and self.create_peer_qdisc(peer)
         return result
 
-def main():
-    try:
-        # Loads configuration file
-        with open(sys.argv[1]) as configuration_file:
-            configuration = json.load(configuration_file)
-    except:
-        print(sys.argv[1] + " is not a valid JSON file")
-        exit(1)
 
+def run_rpc_server(configuration):
     netem_manager = NetemManager(configuration["interface"], configuration["host"], configuration["peers"])
 
     # usage examples
@@ -168,10 +161,21 @@ def main():
     # netem_manager.modify_outgoing_connection("3", "delay 400ms")
     # netem_manager.modify_connection("4", "loss 50% delay 200ms 100ms")
 
-    print configuration["rpcPort"]
+    print(configuration["rpcPort"])
     server = SimpleXMLRPCServer((str(configuration["host"]["address"]), configuration["rpcPort"]))
     server.register_instance(netem_manager)
     server.serve_forever()
+
+
+def main():
+    try:
+        # Loads configuration file
+        with open(sys.argv[1]) as configuration_file:
+            configuration = json.load(configuration_file)
+            run_rpc_server(configuration)
+    except:
+        print((sys.argv[1] + " is not a valid JSON file"))
+        exit(1)
 
 
 if __name__ == "__main__":
