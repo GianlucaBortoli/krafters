@@ -1,20 +1,21 @@
 {
-    "mode": "local",
+    "testEndpoint": "127.0.0.1:57639",
     "nodes": [
         {
-            "id": 1,
-            "rpcPort": 42114,
-            "address": "127.0.0.1",
+            "rpcPort": 50567,
             "interface": "lo",
-            "port": 35439
+            "port": 44953,
+            "address": "127.0.0.1",
+            "id": 1
         },
         {
-            "id": 2,
-            "rpcPort": 41127,
-            "address": "127.0.0.1",
+            "rpcPort": 57345,
             "interface": "lo",
-            "port": 42422
+            "port": 48370,
+            "address": "127.0.0.1",
+            "id": 2
         }
     ],
-    "algorithm": "raft"
+    "algorithm": "pso",
+    "mode": "local"
 }
