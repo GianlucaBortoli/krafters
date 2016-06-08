@@ -1,5 +1,4 @@
 import json
-import logging
 import sys
 
 
@@ -26,7 +25,6 @@ def create_configuration_files(peers, path):
 
 
 def main():
-    logging.basicConfig(filename='debug.log', level=logging.DEBUG)
     try:
         # Loads configuration file
         with open(sys.argv[1]) as configuration_file:

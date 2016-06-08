@@ -3,7 +3,6 @@ import subprocess
 import logging
 import sys
 from SimpleXMLRPCServer import SimpleXMLRPCServer
-from SimpleXMLRPCServer import SimpleXMLRPCRequestHandler
 
 
 class NetemManager:
@@ -122,41 +121,36 @@ class NetemManager:
                 else:
                     return True
 
-    def modify_incoming_connection(self, peer_id, netem):
+    def modify_incoming_connection(self, peer_id, netem_command):
         err = self.run_commands(self.modify_incoming_connections_commands, {self.interface_token: self.interface,
                                                                             self.peer_id_token: str(
                                                                                     self.host["id"]) + peer_id,
-                                                                            self.netem_token: netem})
+                                                                            self.netem_token: netem_command})
         if err:
             logging.error("error modifying incoming connection from peer " + peer_id + "!\n\t" + err)
             return False
         else:
             return True
 
-    def modify_outgoing_connection(self, peer_id, netem):
+    def modify_outgoing_connection(self, peer_id, netem_command):
         err = self.run_commands(self.modify_outgoing_connections_commands, {self.interface_token: self.interface,
                                                                             self.peer_id_token: str(
                                                                                     self.host["id"]) + peer_id,
-                                                                            self.netem_token: netem})
+                                                                            self.netem_token: netem_command})
         if err:
             logging.error("error modifying outgoing connection to peer " + peer_id + "!\n\t" + err)
             return False
         else:
             return True
 
-    def modify_connection(self, peer_id, netem):
-        return self.modify_incoming_connection(peer_id, netem) and self.modify_outgoing_connection(peer_id, netem)
+    def modify_connection(self, peer_id, netem_command):
+        return self.modify_incoming_connection(peer_id, netem_command) and self.modify_outgoing_connection(peer_id, netem_command)
 
     def init_qdisc(self):
-        # Cleans qdisc configuration if present
-        self.clean_all_qdisc()
-        # Creates the root qdisc
-        if self.create_root_qdisc():
-            for peer in self.peers:
-                self.create_peer_qdisc(peer)
-        else:
-            exit(1)
-        return True
+        result = True
+        for peer in self.peers:
+            result = result and self.create_peer_qdisc(peer)
+        return result
 
 def main():
     try:
