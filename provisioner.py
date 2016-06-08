@@ -8,6 +8,8 @@ import sys
 from contextlib import closing
 from googleapiclient import discovery
 from oauth2client.client import GoogleCredentials
+from googleapiclient import discovery
+from googleapiclient import http
 
 MAX_CLUSTER_NODES = 9
 CLUSTER_MODES = ["local", "gce"]
@@ -17,6 +19,7 @@ PYTHON2_ENV = None
 # RPC_SERVER_SCRIPT_URL = "https://raw.githubusercontent.com/GianlucaBortoli/krafters/master/network_manager.py"
 
 GCP_PROJECT_ID = "krafters-1334"
+GS_BUCKET = "krafters"
 GCE_REGION_ID = "us-central1"
 GCE_ZONE_ID = "us-central1-c"
 GCE_INSTANCE_TYPE = "n1-standard-1"
@@ -72,9 +75,10 @@ def provide_local_cluster(nodes_num, algorithm):
     print("Running network manager on every node...")
     node_file_path = "/tmp/provision_node_{}_config.json"
     for node in cluster:
-        with open(node_file_path.format(node["id"]), "w") as out_f:
+        node_config_file = node_file_path.format(node["id"])
+        with open(node_config_file, "w") as out_f:
             json.dump(get_node_config(cluster, node), out_f, indent=4)
-        command = [sys.executable, "network_manager.py", node_file_path.format(node["id"])]  # TODO does the network manager really need to know all the cluster config?
+        command = [sys.executable, "network_manager.py", node_config_file]  # TODO does the network manager really need to know all the cluster config?
         subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)  # process is run asynchronously
     for node in cluster:
         while not is_socket_open(node["address"], node["rpcPort"]):  # check that Popen actually started the script
@@ -83,13 +87,13 @@ def provide_local_cluster(nodes_num, algorithm):
     # ✓ 3. run network managers
 
     endpoint_port = str(get_free_random_port())
-    endpoint = cluster[0]["address"] + ":" + endpoint_port   # arbitrarily run the test daemon of the first node
+    endpoint = cluster[0]["address"] + ":" + endpoint_port  # arbitrarily run the test daemon on the first node
     print("Running the test daemon on {}...".format(endpoint))
     command = [sys.executable, "test_daemon.py", node_file_path.format(cluster[0]["id"]), endpoint_port]  # TODO different params may be required
     subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)  # process is run asynchronously
     while not is_socket_open(cluster[0]["address"], int(endpoint_port)):  # check that Popen actually started the script
         sleep(0.3)
-    print("Test daemon active on {}...".format(endpoint))
+    print("Test daemon active on {}".format(endpoint))
     # ✓ 4. run test daemon
 
     print("Provisioning completed: cluster is ready to execute test on {} at {}".format(algorithm, endpoint))
@@ -162,38 +166,53 @@ def create_instance(gce, name, metadata, script):
     return gce.instances().insert(project=GCP_PROJECT_ID, zone=GCE_ZONE_ID, body=config).execute()
 
 
+def upload_object(gcs, file_path, file_name):
+    body = {'name': file_name}
+    with open(file_path, 'rb') as f:
+        req = gcs.objects().insert(bucket=GS_BUCKET, body=body, predefinedAcl="publicRead",
+                                   media_body=http.MediaIoBaseUpload(f, 'application/octet-stream'))
+        resp = req.execute()
+    return resp
+
+
 def provide_gce_cluster(nodes_num, algorithm):
     credentials = GoogleCredentials.get_application_default()
     gce = discovery.build("compute", "v1", credentials=credentials)
+    config_dir = "config/"
+    config_file_template = "provision_node_{}_config.json"
     zone_operations = []
-    instance_name = "vm-node-{}"
+    vm_ids = []
     for i in range(1, nodes_num + 1):
-        metadata = {"myfookey": "myfoovalue"}  # TODO put cluster info instead
-        zone_operations.append(create_instance(gce, instance_name.format(i), metadata, "gce-startup-script.sh"))
-        # vm creation is run asynchronously: check that the operation is completed
-    for zone_op in zone_operations:
-        print("Waiting for operation to finish...")
-        while True:
-            result = gce.zoneOperations().get(project=GCP_PROJECT_ID, zone=GCE_ZONE_ID, operation=zone_op).execute()
-            if result["status"] == "DONE":
-                break
-                # if "error" in result: raise Exception(result["error"])  # TODO handle error
-            sleep(1)
-    print(list_instances(gce))
-
-    return
+        vm_ids.append("vm-node-{}".format(i))
+        metadata = {"bucket": GS_BUCKET, "clusterConfig": config_dir + config_file_template.format(vm_ids[-1])}
+        zone_operations.append(create_instance(gce, vm_ids[-1], metadata, "gce-startup-script.sh"))
+        # vm creation is run asynchronously: check that the operation is really completed
 
     cluster = []
-    for i in range(1, nodes_num + 1):
-        new_node = {
-            "id": i,
-            "address": "127.0.0.1",
-            "port": get_free_random_port(),
-            "rpcPort": get_free_random_port(),
-            "interface": "lo"}
-        print("Adding node to the configuration: {}".format(new_node))
-        cluster.append(new_node)
-    # ✓ 1. spin machines [no need to run a configure daemon on localhost]
+
+    # debug stuff. TODO remove once validated
+    # zone_operations = [{"name": val} for val in ['operation-1465407582139-534c7ca627278-4b35a7d8-c53d8c49', 'operation-1465407583836-534c7ca7c5761-a2aaacdf-dbded590', 'operation-1465407585413-534c7ca946788-4b8bb506-17a6b767']]
+    # vm_ids = ["vm-node-{}".format(i) for i in range(1, nodes_num + 1)]
+
+    for (i, zone) in [(i, zone_op["name"]) for (i, zone_op) in enumerate(zone_operations)]:
+        while True:
+            result = gce.zoneOperations().get(project=GCP_PROJECT_ID, zone=GCE_ZONE_ID, operation=zone).execute()
+            if result["status"] == "DONE":
+                # if "error" in result: raise Exception(result["error"])  # TODO handle error
+                result = gce.instances().get(project=GCP_PROJECT_ID, zone=GCE_ZONE_ID, instance=vm_ids[i]).execute()
+                new_node = {
+                    "id": i + 1,
+                    "address": result["networkInterfaces"][0]["accessConfigs"][0]["natIP"],
+                    "port": 9990,  # TODO FIX
+                    "rpcPort": 12346,  # TODO FIX
+                    "interface": result["networkInterfaces"][0]["name"],
+                    "vmID": vm_ids[i]
+                }
+                print("Adding node to the configuration: {}".format(new_node))
+                cluster.append(new_node)
+                break
+            sleep(1)
+    # ✓ 1. spin machines [configure daemons will be run by the startup script on every node]
 
     print("Going to run algorithm {} on cluster...".format(algorithm))
     if algorithm == "pso":
@@ -201,29 +220,27 @@ def provide_gce_cluster(nodes_num, algorithm):
     elif algorithm == "rethinkdb":
         #TODO: here call methods on configure_daemon.py
         pass  # TODO run service and configure master-slave
-    # ✓ 2. run algorithm [no need to run a configure daemon on localhost]
+    # ✓ 2. run algorithm [via configure daemons]
 
     print("Running network manager on every node...")
     node_file_path = "/tmp/provision_node_{}_config.json"
+    gcs = discovery.build('storage', 'v1', credentials=credentials)
     for node in cluster:
-        with open(node_file_path.format(node["id"]), "w") as out_f:
+        node_config_file = "/tmp/" + config_file_template.format(node["vmID"])
+        with open(node_config_file, "w") as out_f:
             json.dump(get_node_config(cluster, node), out_f, indent=4)
-        command = [sys.executable, "network_manager.py", node_file_path.format(node["id"])]  # TODO does the network manager really need to know all the cluster config?
-        subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)  # process is run asynchronously
-    for node in cluster:
-        while not is_socket_open(node["address"], node["rpcPort"]):  # check that Popen actually started the script
-            sleep(0.3)
+        upload_object(gcs, node_config_file, config_dir + config_file_template.format(node["vmID"]))
+        # TODO remote_node_configure_daemon.run_network_manager()
+        # this rpc will download the node-specific configuration file from gs and run the network manager
+        # each node can discover its configuration file by querying its own metadata
         print("Network manager active on {}:{}".format(node["address"], str(node["rpcPort"])))
     # ✓ 3. run network managers
 
-    endpoint_port = str(get_free_random_port())
-    endpoint = cluster[0]["address"] + ":" + endpoint_port   # arbitrarily run the test daemon of the first node
+    endpoint = cluster[0]["address"] + ":" + str(12345)  # arbitrarily run the test daemon on the first node // TODO FIX
     print("Running the test daemon on {}...".format(endpoint))
-    command = [sys.executable, "test_daemon.py", node_file_path.format(cluster[0]["id"]), endpoint_port]  # TODO different params may be required
-    subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)  # process is run asynchronously
-    while not is_socket_open(cluster[0]["address"], int(endpoint_port)):  # check that Popen actually started the script
-        sleep(0.3)
-    print("Test daemon active on {}...".format(endpoint))
+    # TODO remote_node_configure_daemon.run_test_daemon()
+    # this rpc will run the test daemon by reusing the configuration file just downloaded for the network manager
+    print("Test daemon active on {}".format(endpoint))
     # ✓ 4. run test daemon
 
     print("Provisioning completed: cluster is ready to execute test on {} at {}".format(algorithm, endpoint))
@@ -238,8 +255,6 @@ def provide_gce_cluster(nodes_num, algorithm):
     print("Cluster configuration saved in file {}.\n".format(cluster_config_file))
     print("To perform a test run: run_test.py test_file_name {}".format(cluster_config_file))
     print("To stop the cluster run: tear_down.py {}".format(cluster_config_file))
-
-
     # print("Fetching latest version of RPC server from {}...".format(RPC_SERVER_SCRIPT_URL))
     # script_path = "/tmp/rpc_server.py"
     # urlretrieve(RPC_SERVER_SCRIPT_URL, script_path) TODO uncomment when committing new network_manager.py
