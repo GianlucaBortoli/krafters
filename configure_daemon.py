@@ -7,3 +7,5 @@
 # rethinkdb:    configure_rethinkdb_master & configure_rethinkdb_follower
 # paxos:        configure_paxos
 # pso:          < nothing to do here >
+#
+# port to listen to: 12345
