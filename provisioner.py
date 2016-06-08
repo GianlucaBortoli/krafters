@@ -17,13 +17,16 @@ PYTHON2_ENV = None
 # RPC_SERVER_SCRIPT_URL = "https://raw.githubusercontent.com/GianlucaBortoli/krafters/master/network_manager.py"
 
 GCP_PROJECT_ID = "krafters-1334"
+GCE_REGION_ID = "us-central1"
 GCE_ZONE_ID = "us-central1-c"
 GCE_INSTANCE_TYPE = "n1-standard-1"
+GCE_OS_PROJECT = "ubuntu-os-cloud"
+GCE_OS_FAMILY = "ubuntu-1204-lts"
 
 
 def get_free_random_port():
     s = socket.socket()
-    s.bind(('', 0))  # bind to a free random port
+    s.bind(("", 0))  # bind to a free random port
     return s.getsockname()[1]  # return the port number assigned
 
 
@@ -68,7 +71,7 @@ def provide_local_cluster(nodes_num, algorithm):
     print("Running network manager on every node...")
     node_file_path = "/tmp/provision_node_{}_config.json"
     for node in cluster:
-        with open(node_file_path.format(node["id"]), 'w') as out_f:
+        with open(node_file_path.format(node["id"]), "w") as out_f:
             json.dump(get_node_config(cluster, node), out_f, indent=4)
         command = [sys.executable, "network_manager.py", node_file_path.format(node["id"])]  # TODO does the network manager really need to know all the cluster config?
         subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)  # process is run asynchronously
@@ -90,7 +93,7 @@ def provide_local_cluster(nodes_num, algorithm):
 
     print("Provisioning completed: cluster is ready to execute test on {} at {}".format(algorithm, endpoint))
     cluster_config_file = "masterConfig.json"  # this file will be used to tear down the cluster
-    with open(cluster_config_file, 'w') as out_f:
+    with open(cluster_config_file, "w") as out_f:
         json.dump({
             "mode": "local",
             "algorithm": algorithm,
@@ -102,38 +105,37 @@ def provide_local_cluster(nodes_num, algorithm):
     print("To stop the cluster run: tear_down.py {}".format(cluster_config_file))
 
 
-def list_instances(compute, project, zone):
-    result = compute.instances().list(project=project, zone=zone).execute()
-    return result['items']
+def list_instances(compute):
+    return compute.instances().list(project=GCP_PROJECT_ID, zone=GCE_ZONE_ID).execute().get("items", [])
 
 
 def create_instance(gce, name, metadata, script):
-    image_response = gce.images().getFromFamily(
-        project="ubuntu-os-cloud", family="ubuntu-1204-lts").execute()
-    startup_script = open(script, 'r').read()
-
+    # fetch the latest image version
+    image_response = gce.images().getFromFamily(project=GCE_OS_PROJECT, family=GCE_OS_FAMILY).execute()
     config = {
-        'name': name,
+        "name": name,
         # "description": "description",
-        'machineType': "zones/{}/machineTypes/{}".format(GCE_ZONE_ID, GCE_INSTANCE_TYPE),
-        'disks': [{
-            'boot': True,
-            'autoDelete': True,
+        "machineType": "zones/{}/machineTypes/{}".format(GCE_ZONE_ID, GCE_INSTANCE_TYPE),
+        "disks": [{
+            "boot": True,
+            "autoDelete": True,
             "type": "PERSISTENT",
             "mode": "READ_WRITE",
-            'initializeParams': {
-                'sourceImage': image_response['selfLink'],
+            "deviceName": name + "-disk",
+            "initializeParams": {
+                "sourceImage": image_response["selfLink"],
                 "diskType": "projects/{}/zones/{}/diskTypes/pd-standard".format(GCP_PROJECT_ID, GCE_ZONE_ID),
                 "diskSizeGb": "10"
             }
         }],
-        'networkInterfaces': [{
-            'network': 'global/networks/default',
-            "subnetwork": "projects/{}/regions/{}/subnetworks/default".format(GCP_PROJECT_ID, GCE_ZONE_ID),
-            'accessConfigs': [{'type': 'ONE_TO_ONE_NAT', 'name': 'External NAT'}]
+        "networkInterfaces": [{
+            "network": "global/networks/default",
+            "projects/krafters-1334/regions/us-central1/subnetworks/default"
+            "subnetwork": "projects/{}/regions/{}/subnetworks/default".format(GCP_PROJECT_ID, GCE_REGION_ID),
+            "accessConfigs": [{"type": "ONE_TO_ONE_NAT", "name": "External NAT"}]
         }],
-        'serviceAccounts': [{
-            'email': 'default',
+        "serviceAccounts": [{
+            "email": "default",
             "scopes": [
                 "https://www.googleapis.com/auth/devstorage.read_only",
                 "https://www.googleapis.com/auth/logging.write",
@@ -142,10 +144,10 @@ def create_instance(gce, name, metadata, script):
                 "https://www.googleapis.com/auth/service.management"
             ]
         }],
-        'metadata': {
-            'items': [{
-                'key': 'startup-script',
-                'value': startup_script
+        "metadata": {
+            "items": [{
+                "key": "startup-script",
+                "value": open(script, "r").read()  # this script will be executed automatically on every vm (re)start
             }]
         },
         "scheduling": {
@@ -154,28 +156,29 @@ def create_instance(gce, name, metadata, script):
             "automaticRestart": True
         }
     }
-
-    for key, value in metadata.items():
-        config['metadata']['items'].appen({
-            'key': key,
-            'value': value
-        })
-
-    return gce.instances().insert(
-        project=GCP_PROJECT_ID,
-        zone=GCE_ZONE_ID,
-        body=config).execute()
+    # add custom metadata to the vm
+    config["metadata"]["items"].extend({"key": key, "value": value} for key, value in metadata.items())
+    return gce.instances().insert(project=GCP_PROJECT_ID, zone=GCE_ZONE_ID, body=config).execute()
 
 
 def provide_gce_cluster(nodes_num, algorithm):
-    # TODO ALIGN WITH LOCAL CLUSTER
     credentials = GoogleCredentials.get_application_default()
-    gce = discovery.build('compute', 'v1', credentials=credentials)
-    result = gce.instances().list(project=GCP_PROJECT_ID, zone=GCE_ZONE_ID).execute()
-    print(result.get("item", []))
-    script = "gce-startup-script.sh"
-    result = create_instance(gce, "nomefarlocco", "gs://krafters/")
-    print(result)
+    gce = discovery.build("compute", "v1", credentials=credentials)
+    zone_operations = []
+    instance_name = "vm-node-{}"
+    for i in range(1, nodes_num + 1):
+        metadata = {"myfookey": "myfoovalue"}  # TODO put cluster info instead
+        zone_operations.append(create_instance(gce, instance_name.format(i), metadata, "gce-startup-script.sh"))
+        # vm creation is run asynchronously: check that the operation is completed
+    for zone_op in zone_operations:
+        print("Waiting for operation to finish...")
+        while True:
+            result = gce.zoneOperations().get(project=GCP_PROJECT_ID, zone=GCE_ZONE_ID, operation=zone_op).execute()
+            if result["status"] == "DONE":
+                break
+                # if "error" in result: raise Exception(result["error"])  # TODO handle error
+            sleep(1)
+    print(list_instances(gce))
 
     return
 
@@ -189,35 +192,49 @@ def provide_gce_cluster(nodes_num, algorithm):
             "interface": "lo"}
         print("Adding node to the configuration: {}".format(new_node))
         cluster.append(new_node)
-
-    print("Running network manager on every node...")
-    for node in cluster:
-        node_file_path = "/tmp/provision_node_" + str(node["id"]) + "_config.json"
-        with open(node_file_path, 'w') as out_f:
-            json.dump(get_node_config(cluster, node), out_f, indent=4)
-        command = [sys.executable, "network_manager.py", node_file_path]
-        subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)  # process is run asynchronously
-
-    for node in cluster:
-        while not is_socket_open(node["address"], node["rpcPort"]):  # check that Popen actually run the script
-            sleep(0.3)
-        print("Network manager active on {}".format(node["address"] + ":" + str(node["rpcPort"])))
+    # ✓ 1. spin machines [no need to run a configure daemon on localhost]
 
     print("Going to run algorithm {} on cluster...".format(algorithm))
     if algorithm == "pso":
-        pass  # TODO run algorithm
+        pass  # nothing to configure
     elif algorithm == "rethinkdb":
-        pass  # TODO run algorithm
-    print("Provisioning completed: cluster is running and ready to execute test.")
+        pass  # TODO run service and configure master-slave
+    # ✓ 2. run algorithm [no need to run a configure daemon on localhost]
+
+    print("Running network manager on every node...")
+    node_file_path = "/tmp/provision_node_{}_config.json"
+    for node in cluster:
+        with open(node_file_path.format(node["id"]), "w") as out_f:
+            json.dump(get_node_config(cluster, node), out_f, indent=4)
+        command = [sys.executable, "network_manager.py", node_file_path.format(node["id"])]  # TODO does the network manager really need to know all the cluster config?
+        subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)  # process is run asynchronously
+    for node in cluster:
+        while not is_socket_open(node["address"], node["rpcPort"]):  # check that Popen actually started the script
+            sleep(0.3)
+        print("Network manager active on {}:{}".format(node["address"], str(node["rpcPort"])))
+    # ✓ 3. run network managers
+
+    endpoint_port = str(get_free_random_port())
+    endpoint = cluster[0]["address"] + ":" + endpoint_port   # arbitrarily run the test daemon of the first node
+    print("Running the test daemon on {}...".format(endpoint))
+    command = [sys.executable, "test_daemon.py", node_file_path.format(cluster[0]["id"]), endpoint_port]  # TODO different params may be required
+    subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)  # process is run asynchronously
+    while not is_socket_open(cluster[0]["address"], int(endpoint_port)):  # check that Popen actually started the script
+        sleep(0.3)
+    print("Test daemon active on {}...".format(endpoint))
+    # ✓ 4. run test daemon
+
+    print("Provisioning completed: cluster is ready to execute test on {} at {}".format(algorithm, endpoint))
     cluster_config_file = "masterConfig.json"  # this file will be used to tear down the cluster
-    with open(cluster_config_file, 'w') as out_f:
+    with open(cluster_config_file, "w") as out_f:
         json.dump({
             "mode": "local",
             "algorithm": algorithm,
+            "testEndpoint": endpoint,
             "nodes": cluster
         }, out_f, indent=4)
     print("Cluster configuration saved in file {}.\n".format(cluster_config_file))
-    print("To perform a test run: run_test.py test_file_name")
+    print("To perform a test run: run_test.py test_file_name {}".format(cluster_config_file))
     print("To stop the cluster run: tear_down.py {}".format(cluster_config_file))
 
 
@@ -230,13 +247,13 @@ def provide_gce_cluster(nodes_num, algorithm):
 
 def main():
     parser = argparse.ArgumentParser(description="Run a consensus algorithm on a cluster of nodes.")
-    parser.add_argument("-n", "--nodes", type=int, choices=range(1, MAX_CLUSTER_NODES + 1), dest="nodes", required=True,
+    parser.add_argument("-n", "--nodes", type=int, choices=range(1, MAX_CLUSTER_NODES + 1), dest="nodes", default=3,
                         help="cluster nodes number")
-    parser.add_argument("-m", "--mode", type=str, choices=CLUSTER_MODES, dest="mode", required=True,
+    parser.add_argument("-m", "--mode", type=str, choices=CLUSTER_MODES, dest="mode", default="local",
                         help="cluster node location")
-    parser.add_argument("-a", "--algorithm", type=str, choices=CONSENSUS_ALGORITHMS, dest="algorithm", required=True,
+    parser.add_argument("-a", "--algorithm", type=str, choices=CONSENSUS_ALGORITHMS, dest="algorithm", default="pso",
                         help="consensus algorithm")
-    parser.add_argument("-p", "--python", type=str, dest="python", required=True, help="python2 bin")
+    parser.add_argument("-p", "--python", type=str, dest="python", default="/usr/bin/python2.7", help="python2 bin")
 
     args = parser.parse_args()
     print("Going to deploy a cluster of {} nodes on {}. Please wait...".format(args.nodes, args.mode))
