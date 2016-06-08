@@ -65,6 +65,7 @@ def provide_local_cluster(nodes_num, algorithm):
     if algorithm == "pso":
         pass  # nothing to configure
     elif algorithm == "rethinkdb":
+        #TODO: run local cluster
         pass  # TODO run service and configure master-slave
     # ✓ 2. run algorithm [no need to run a configure daemon on localhost]
 
@@ -198,6 +199,7 @@ def provide_gce_cluster(nodes_num, algorithm):
     if algorithm == "pso":
         pass  # nothing to configure
     elif algorithm == "rethinkdb":
+        #TODO: here call methods on configure_daemon.py
         pass  # TODO run service and configure master-slave
     # ✓ 2. run algorithm [no need to run a configure daemon on localhost]
 
