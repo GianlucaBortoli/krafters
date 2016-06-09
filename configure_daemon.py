@@ -16,24 +16,27 @@ from xmlrpc.server import SimpleXMLRPCServer
 
 # some useful constants
 RPC_LISTEN_PORT = 12345
-RETHINKDB_START_PORT = 12350
+RETHINKDB_PORT = 12347
 DEVNULL = open(os.devnull, 'wb')
 
 
-def configure_rethinkdb_master():
-    cmd = "rethinkdb --bind all --cluster-port {port} &".\
-        format(port=RETHINKDB_START_PORT)
+def configure_rethinkdb_master(cluster_port, driver_port, http_port):
+    # the cluster_port is the one to be used for joining the master
+    cmd = "rethinkdb --bind all --cluster-port {cp} --driver-port {dp} --http-port {hp} &".\
+        format(cp=cluster_port, dp=driver_port, hp=http_port)
     p = sb.Popen(cmd, shell=True, stdout=DEVNULL)
     p.communicate()
-    return "master on port {} up".format(RETHINKDB_START_PORT)
+    return "master on port {} up".format(cluster_port)
 
 
-def configure_rethinkdb_follower(master_ip, node_id, offset):
-    cmd = "rethinkdb --port-offset {off} --directory rethinkdb_data{id} --join {ip}:{port} &".\
-        format(off=offset, id=node_id, ip=master_ip, port=RETHINKDB_START_PORT)
+def configure_rethinkdb_follower(my_id, m_ip, m_cp, my_cp, my_dp, my_hp):
+    cmd = ("rethinkdb --directory rethinkdb_data{id} " 
+            "--join {ip}:{m_cp} --cluster-port {my_cp} "
+            "--driver-port {my_dp} --http-port {my_hp} &").\
+        format(id=my_id, ip=m_ip, m_cp=m_cp, my_cp=my_cp, my_dp=my_dp, my_hp=my_hp)
     p = sb.Popen(cmd, shell=True, stdout=DEVNULL)
     p.communicate()
-    return "follower on port {} up".format(RETHINKDB_START_PORT + offset)
+    return "follower on port {} up".format(my_cp)
 
 
 def stop_rethinkdb():
