@@ -42,6 +42,14 @@ def stop_rethinkdb():
     return "rethinkdb stopped"
 
 
+def foo():
+    pass
+
+
+def foo1():
+    pass
+
+
 def configure_paxos():
     pass
 
@@ -55,6 +63,8 @@ if __name__ == '__main__':
         server.register_function(configure_rethinkdb_follower, "configure_rethinkdb_follower")
         server.register_function(configure_paxos, "configure_paxos")
         server.register_function(stop_rethinkdb, "stop_rethinkdb")
+        server.register_function(foo, "foo")
+        server.register_function(foo1, "foo1")
         # finally serve them
         server.serve_forever()
     except KeyboardInterrupt:
