@@ -1,6 +1,10 @@
 import json
 import sys
 import subprocess
+from time import sleep
+from oauth2client.client import GoogleCredentials
+from googleapiclient import discovery
+from provisioner import GCP_PROJECT_ID, GCE_ZONE_ID
 
 
 def kill_process_by_port(port):
@@ -19,15 +23,32 @@ def tear_down_local_cluster(conf):
     print("Cluster torn down correctly. Bye!")
 
 
+def delete_instance(gce, name):
+    return gce.instances().delete(project=GCP_PROJECT_ID, zone=GCE_ZONE_ID, instance=name).execute()
+
+
 def tear_down_gce_cluster(conf):
-    # TODO implement it
-    pass
+    credentials = GoogleCredentials.get_application_default()
+    gce = discovery.build("compute", "v1", credentials=credentials)
+    zone_operations = []
+    for node in conf["nodes"]:
+        print("Deleting node {}...".format(node["vmID"]))
+        zone_operations.append(delete_instance(gce, node["vmID"]))
+    for op in zone_operations:
+        while True:
+            result = gce.zoneOperations().get(project=GCP_PROJECT_ID, zone=GCE_ZONE_ID, operation=op["name"]).execute()
+            if result["status"] == "DONE":
+                # if "error" in result: raise Exception(result["error"])  # TODO handle error
+                print("Deleted node {}".format(result["targetLink"].split("/")[-1]))
+                break
+            sleep(1)
+    print("Cluster torn down correctly. Bye!")
 
 
 def main():
     with open(sys.argv[1]) as configuration_f:
         conf = json.load(configuration_f)
-    print("Going to tear down a cluster of {} nodes on {}. Please wait...".format(conf["algorithm"], conf["mode"]))
+    print("Tearing down a cluster of {} nodes on {}. Please wait...".format(str(len(conf["nodes"])), conf["mode"]))
     if conf["mode"] == "local":
         tear_down_local_cluster(conf)
     elif conf["mode"] == "gce":
