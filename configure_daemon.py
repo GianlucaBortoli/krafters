@@ -54,7 +54,7 @@ def run_test_daemon(algorithm):
 def run_network_manager():
     # this rpc will download the node-specific configuration file from gs and run the network manager
     # each node can discover its configuration file by querying its own metadata
-    pass
+    return "ok"
 
 
 def configure_paxos():
@@ -63,7 +63,7 @@ def configure_paxos():
 
 if __name__ == '__main__':
     try:
-        server = SimpleXMLRPCServer(("localhost", CONFIGURE_DAEMON_PORT))
+        server = SimpleXMLRPCServer(("", CONFIGURE_DAEMON_PORT))
         print("Configure daemon listening on port {}...".format(CONFIGURE_DAEMON_PORT))
         # register all exposed functions
         server.register_function(configure_rethinkdb_master, "configure_rethinkdb_master")
