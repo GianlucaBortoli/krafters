@@ -155,6 +155,12 @@ def create_instance(gce, name, metadata, script):
                 "https://www.googleapis.com/auth/service.management"
             ]
         }],
+        "tags": {
+            "items": [
+                "http-server",
+                "https-server"
+            ]
+        },
         "metadata": {
             "items": [{
                 "key": "startup-script",
@@ -233,21 +239,39 @@ def provide_gce_cluster(nodes_num, algorithm):
             json.dump(get_node_config(cluster, node), out_f, indent=4)
         upload_object(gcs, node_config_file, config_dir + config_file_template.format(node["vmID"]))
         configure_daemons.append(rpcClient('http://{}:{}'.format(node["address"], CONFIGURE_DAEMON_PORT)))
+        retries = 0
         while True:
             try:
                 configure_daemons[-1].run_network_manager()
+                # this rpc will download the node-specific configuration file from gs and run the network manager
+                # each node can discover its configuration file by querying its own metadata
                 break
             except Exception as e:
                 print(e)
-        # this rpc will download the node-specific configuration file from gs and run the network manager
-        # each node can discover its configuration file by querying its own metadata
+                retries += 1
+                if retries < 10:
+                    print("An error occurred while starting the network manager. Retrying ({}/{})...".format(retries))
+                else:
+                    print("An error occurred while starting the network manager. Unable to complete provisioning")
+                    exit(2)  # TODO handle
         print("Network manager active on {}:{}".format(node["address"], str(node["rpcPort"])))
     # ✓ 3. run network managers
 
     endpoint = cluster[0]["address"] + ":" + str(TEST_DAEMON_PORT)  # arbitrarily run the test daemon on the first node
     print("Running the test daemon on {}...".format(endpoint))
-    configure_daemons[0].run_test_daemon(algorithm)
-    # this rpc will run the test daemon by reusing the configuration file just downloaded for the network manager
+    retries = 0
+    while True:
+        try:
+            configure_daemons[0].run_test_daemon(algorithm)
+            break
+        except Exception as e:
+            print(e)
+            retries += 1
+            if retries < 10:
+                print("An error occurred while starting the test daemon. Retrying ({}/{})...".format(retries))
+            else:
+                print("An error occurred while starting the test daemon. Unable to complete provisioning")
+                exit(2)  # TODO handle
     print("Test daemon active on {}".format(endpoint))
     # ✓ 4. run test daemon
 

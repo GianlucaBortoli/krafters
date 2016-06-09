@@ -6,6 +6,8 @@ import logging
 import sys
 from xmlrpc.server import SimpleXMLRPCServer
 
+# NOTE DO NOT ADD EXTERNAL DEPENDENCIES: THIS SCRIPT HAS TO BE EXECUTED IN A STANDALONE WAY ON VM STARTUP
+
 
 class NetemManager:
     interface = ""

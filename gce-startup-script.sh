@@ -2,10 +2,17 @@
 
 export DEBIAN_FRONTEND=noninteractive
 pwd
+# install python3.4
 sudo add-apt-repository -y ppa:fkrull/deadsnakes
 sudo apt-get update
 sudo apt-get install -y python3.4
-# fetch configure_daemon.py in background
+# fetch network_manager.py
+curl https://raw.githubusercontent.com/GianlucaBortoli/krafters/master/network_manager.py > network_manager.py
+sudo chmod 777 network_manager.py
+# fetch test_daemon.py
+curl https://raw.githubusercontent.com/GianlucaBortoli/krafters/master/test_daemon.py > test_daemon.py
+sudo chmod 777 test_daemon.py
+# fetch configure_daemon.py
 curl https://raw.githubusercontent.com/GianlucaBortoli/krafters/master/configure_daemon.py > configure_daemon.py
 sudo chmod 777 configure_daemon.py
 # run configure_daemon.py in background

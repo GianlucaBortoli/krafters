@@ -14,11 +14,13 @@ import os
 import sys
 from xmlrpc.server import SimpleXMLRPCServer
 
+# NOTE DO NOT ADD EXTERNAL DEPENDENCIES: THIS SCRIPT HAS TO BE EXECUTED IN A STANDALONE WAY ON VM STARTUP
+
 # some useful constants
 CONFIGURE_DAEMON_PORT = 12345
 RETHINKDB_PORT = 12347  # TODO Useless?
 DEVNULL = open(os.devnull, 'wb')
-
+LOCAL_NODE_CONF_FILE = "node_conf.json"
 
 def configure_rethinkdb_master(cluster_port, driver_port, http_port):
     # the cluster_port is the one to be used for joining the master
@@ -46,15 +48,30 @@ def stop_rethinkdb():
 
 
 def run_test_daemon(algorithm):
-    host = None  # TODO reuse the one in the node-specific configuration file retrieved by run_network_manager()
-    command = [sys.executable, "test_daemon.py", host, algorithm]
+    command = [sys.executable, "test_daemon.py", "", algorithm]
     sb.Popen(command, stdout=sb.PIPE, stderr=sb.PIPE)
-
+    print("Test daemon started")
+    return True
 
 def run_network_manager():
     # this rpc will download the node-specific configuration file from gs and run the network manager
     # each node can discover its configuration file by querying its own metadata
-    return "ok"
+    command = ["curl", "http://metadata.google.internal/computeMetadata/v1/instance/attributes/clusterConfig", "-H"
+                "Metadata-Flavor: Google"]
+    out, _ = sb.Popen(command, stdout=sb.PIPE, stderr=sb.PIPE).communicate()
+    gcs_node_conf_file = out.decode("utf-8")
+    print("GCS file: {}".format(gcs_node_conf_file))
+    command[1] = ["http://metadata.google.internal/computeMetadata/v1/instance/attributes/bucket"]
+    out, _ = sb.Popen(command, stdout=sb.PIPE, stderr=sb.PIPE).communicate()
+    bucket = out.decode("utf-8")
+    print("GCS bucket: {}".format(bucket))
+    command = ["gsutil", "cp", "gs://" + bucket + "/" + gcs_node_conf_file, "./" + LOCAL_NODE_CONF_FILE]
+    sb.Popen(command, stdout=sb.PIPE, stderr=sb.PIPE).communicate()
+    print("GCS file download completed")
+    command = ["./network_manager.py", LOCAL_NODE_CONF_FILE]
+    sb.Popen(command, stdout=sb.PIPE, stderr=sb.PIPE)
+    print("Network manager started")
+    return True
 
 
 def configure_paxos():
