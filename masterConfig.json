@@ -1,28 +1,28 @@
 {
-    "testEndpoint": "127.0.0.1:57639",
+    "algorithm": "pso",
+    "mode": "local",
+    "testDaemon": "127.0.0.1:12346",
     "nodes": [
         {
-            "rpcPort": 50567,
-            "interface": "lo",
-            "port": 44953,
+            "id": 1,
             "address": "127.0.0.1",
-            "id": 1
+            "port": 58912,
+            "interface": "lo",
+            "rpcPort": 45096
         },
         {
-            "rpcPort": 57345,
-            "interface": "lo",
-            "port": 48370,
+            "id": 2,
             "address": "127.0.0.1",
-            "id": 2
+            "port": 46152,
+            "interface": "lo",
+            "rpcPort": 41695
         },
         {
-            "rpcPort": 57346,
-            "interface": "lo",
-            "port": 48371,
+            "id": 3,
             "address": "127.0.0.1",
-            "id": 3
+            "port": 50326,
+            "interface": "lo",
+            "rpcPort": 38868
         }
-    ],
-    "algorithm": "pso",
-    "mode": "local"
+    ]
 }

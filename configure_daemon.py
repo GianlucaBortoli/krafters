@@ -15,8 +15,8 @@ import sys
 from xmlrpc.server import SimpleXMLRPCServer
 
 # some useful constants
-RPC_LISTEN_PORT = 12345
-RETHINKDB_PORT = 12347
+CONFIGURE_DAEMON_PORT = 12345
+RETHINKDB_PORT = 12347  # TODO Useless?
 DEVNULL = open(os.devnull, 'wb')
 
 
@@ -45,11 +45,15 @@ def stop_rethinkdb():
     return "rethinkdb stopped"
 
 
-def foo():
-    pass
+def run_test_daemon(algorithm):
+    host = None  # TODO reuse the one in the node-specific configuration file retrieved by run_network_manager()
+    command = [sys.executable, "test_daemon.py", host, algorithm]
+    sb.Popen(command, stdout=sb.PIPE, stderr=sb.PIPE)
 
 
-def foo1():
+def run_network_manager():
+    # this rpc will download the node-specific configuration file from gs and run the network manager
+    # each node can discover its configuration file by querying its own metadata
     pass
 
 
@@ -59,15 +63,15 @@ def configure_paxos():
 
 if __name__ == '__main__':
     try:
-        server = SimpleXMLRPCServer(("localhost", RPC_LISTEN_PORT))
-        print("Configure daemon listening on port {}...".format(RPC_LISTEN_PORT))
+        server = SimpleXMLRPCServer(("localhost", CONFIGURE_DAEMON_PORT))
+        print("Configure daemon listening on port {}...".format(CONFIGURE_DAEMON_PORT))
         # register all exposed functions
         server.register_function(configure_rethinkdb_master, "configure_rethinkdb_master")
         server.register_function(configure_rethinkdb_follower, "configure_rethinkdb_follower")
         server.register_function(configure_paxos, "configure_paxos")
         server.register_function(stop_rethinkdb, "stop_rethinkdb")
-        server.register_function(foo, "foo")
-        server.register_function(foo1, "foo1")
+        server.register_function(run_test_daemon, "run_test_daemon")
+        server.register_function(run_network_manager, "run_network_manager")
         # finally serve them
         server.serve_forever()
     except KeyboardInterrupt:

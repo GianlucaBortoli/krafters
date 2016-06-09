@@ -20,8 +20,8 @@ def tear_down_local_cluster(conf):
         kill_process_by_port(node["port"])
         print("Shutting down process for network manager running at {}:{}".format(node["address"], node["rpcPort"]))
         kill_process_by_port(node["rpcPort"])
-    print("Shutting down process for test daemon running at {}".format(conf["testEndpoint"]))
-    kill_process_by_port(conf["testEndpoint"].split(":")[1])
+    print("Shutting down process for test daemon running at {}".format(conf["testDaemon"]))
+    kill_process_by_port(conf["testDaemon"].split(":")[1])
     print("Cluster torn down correctly. Bye!")
 
 
@@ -34,14 +34,14 @@ def tear_down_gce_cluster(conf):
     gce = discovery.build("compute", "v1", credentials=credentials)
     zone_operations = []
     for node in conf["nodes"]:
-        print("Deleting node {}...".format(node["vmID"]))
+        print("Deleting node on virtual machine {}...".format(node["vmID"]))
         zone_operations.append(delete_instance(gce, node["vmID"]))
     for op in zone_operations:
         while True:
             result = gce.zoneOperations().get(project=GCP_PROJECT_ID, zone=GCE_ZONE_ID, operation=op["name"]).execute()
             if result["status"] == "DONE":
                 # if "error" in result: raise Exception(result["error"])  # TODO handle error
-                print("Deleted node {}".format(result["targetLink"].split("/")[-1]))
+                print("Deleted node on virtual machine {}".format(result["targetLink"].split("/")[-1]))
                 break
             sleep(1)
     print("Cluster torn down correctly. Bye!")

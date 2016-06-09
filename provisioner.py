@@ -11,8 +11,11 @@ from contextlib import closing
 from oauth2client.client import GoogleCredentials
 from googleapiclient import discovery
 from googleapiclient import http
+from test_daemon import TEST_DAEMON_PORT
+from configure_daemon import CONFIGURE_DAEMON_PORT
+from xmlrpc.client import ServerProxy as rpcClient
 
-MAX_CLUSTER_NODES = 9
+MAX_CLUSTER_NODES = 8  # CPU-quota on GCE
 CLUSTER_MODES = ["local", "gce"]
 CONSENSUS_ALGORITHMS = ["pso", "rethinkdb"]
 PYTHON2_ENV = None
@@ -24,8 +27,10 @@ GS_BUCKET = "krafters"
 GCE_REGION_ID = "us-central1"
 GCE_ZONE_ID = "us-central1-c"
 GCE_INSTANCE_TYPE = "n1-standard-1"
-GCE_OS_PROJECT = "ubuntu-os-cloud"
+GCE_OS_PROJECT = "ubuntu-os-cloud"  # TODO FIX
 GCE_OS_FAMILY = "ubuntu-1204-lts"
+
+CONSENSUS_ALGORITHM_PORT = 12347
 
 
 def get_free_random_port():
@@ -79,7 +84,7 @@ def provide_local_cluster(nodes_num, algorithm):
         node_config_file = node_file_path.format(node["id"])
         with open(node_config_file, "w") as out_f:
             json.dump(get_node_config(cluster, node), out_f, indent=4)
-        command = [sys.executable, "network_manager.py", node_config_file]  # TODO does the network manager really need to know all the cluster config?
+        command = [sys.executable, "network_manager.py", node_config_file]
         subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)  # process is run asynchronously
     for node in cluster:
         while not is_socket_open(node["address"], node["rpcPort"]):  # check that Popen actually started the script
@@ -87,12 +92,12 @@ def provide_local_cluster(nodes_num, algorithm):
         print("Network manager active on {}:{}".format(node["address"], str(node["rpcPort"])))
     # ✓ 3. run network managers
 
-    endpoint_port = str(get_free_random_port())
-    endpoint = cluster[0]["address"] + ":" + endpoint_port  # arbitrarily run the test daemon on the first node
+    endpoint_port = str(TEST_DAEMON_PORT)
+    endpoint = "127.0.0.1:" + endpoint_port  # run the test daemon on localhost
     print("Running the test daemon on {}...".format(endpoint))
-    command = [sys.executable, "test_daemon.py", node_file_path.format(cluster[0]["id"]), endpoint_port]  # TODO different params may be required
+    command = [sys.executable, "test_daemon.py", "127.0.0.1", algorithm]
     subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)  # process is run asynchronously
-    while not is_socket_open(cluster[0]["address"], int(endpoint_port)):  # check that Popen actually started the script
+    while not is_socket_open("127.0.0.1", int(endpoint_port)):  # check that Popen actually started the script
         sleep(0.3)
     print("Test daemon active on {}".format(endpoint))
     # ✓ 4. run test daemon
@@ -107,7 +112,7 @@ def provide_local_cluster(nodes_num, algorithm):
             "nodes": cluster
         }, out_f, indent=4)
     print("Cluster configuration saved in file {}.\n".format(cluster_config_file))
-    print("To perform a test run: run_test.py test_file_name {}".format(cluster_config_file))
+    print("To perform a test run: test_executor.py {} test_file_name".format(cluster_config_file))
     print("To stop the cluster run: tear_down.py {}".format(cluster_config_file))
 
 
@@ -190,11 +195,6 @@ def provide_gce_cluster(nodes_num, algorithm):
         # vm creation is run asynchronously: check that the operation is really completed
 
     cluster = []
-
-    # debug stuff. TODO remove once validated
-    # zone_operations = [{"name": val} for val in ['operation-1465407582139-534c7ca627278-4b35a7d8-c53d8c49', 'operation-1465407583836-534c7ca7c5761-a2aaacdf-dbded590', 'operation-1465407585413-534c7ca946788-4b8bb506-17a6b767']]
-    # vm_ids = ["vm-node-{}".format(i) for i in range(1, nodes_num + 1)]
-
     for (i, zone) in [(i, zone_op["name"]) for (i, zone_op) in enumerate(zone_operations)]:
         while True:
             result = gce.zoneOperations().get(project=GCP_PROJECT_ID, zone=GCE_ZONE_ID, operation=zone).execute()
@@ -204,8 +204,8 @@ def provide_gce_cluster(nodes_num, algorithm):
                 new_node = {
                     "id": i + 1,
                     "address": result["networkInterfaces"][0]["accessConfigs"][0]["natIP"],
-                    "port": 9990,  # TODO FIX
-                    "rpcPort": 12346,  # TODO FIX
+                    "port": CONSENSUS_ALGORITHM_PORT,
+                    "rpcPort": TEST_DAEMON_PORT,
                     "interface": result["networkInterfaces"][0]["name"],
                     "vmID": vm_ids[i]
                 }
@@ -225,20 +225,22 @@ def provide_gce_cluster(nodes_num, algorithm):
 
     print("Running network manager on every node...")
     gcs = discovery.build('storage', 'v1', credentials=credentials)
+    configure_daemons = []
     for node in cluster:
         node_config_file = "/tmp/" + config_file_template.format(node["vmID"])
         with open(node_config_file, "w") as out_f:
             json.dump(get_node_config(cluster, node), out_f, indent=4)
         upload_object(gcs, node_config_file, config_dir + config_file_template.format(node["vmID"]))
-        # TODO remote_node_configure_daemon.run_network_manager()
+        configure_daemons.append(rpcClient('http://{}:{}'.format(node["address"], CONFIGURE_DAEMON_PORT)))
+        configure_daemons[-1].run_network_manager()
         # this rpc will download the node-specific configuration file from gs and run the network manager
         # each node can discover its configuration file by querying its own metadata
         print("Network manager active on {}:{}".format(node["address"], str(node["rpcPort"])))
     # ✓ 3. run network managers
 
-    endpoint = cluster[0]["address"] + ":" + str(12345)  # arbitrarily run the test daemon on the first node // TODO FIX
+    endpoint = cluster[0]["address"] + ":" + str(TEST_DAEMON_PORT)  # arbitrarily run the test daemon on the first node
     print("Running the test daemon on {}...".format(endpoint))
-    # TODO remote_node_configure_daemon.run_test_daemon()
+    configure_daemons[0].run_test_daemon(algorithm)
     # this rpc will run the test daemon by reusing the configuration file just downloaded for the network manager
     print("Test daemon active on {}".format(endpoint))
     # ✓ 4. run test daemon
@@ -249,11 +251,11 @@ def provide_gce_cluster(nodes_num, algorithm):
         json.dump({
             "mode": "gce",
             "algorithm": algorithm,
-            "testEndpoint": endpoint,
+            "testDaemon": endpoint,
             "nodes": cluster
         }, out_f, indent=4)
     print("Cluster configuration saved in file {}.\n".format(cluster_config_file))
-    print("To perform a test run: run_test.py test_file_name {}".format(cluster_config_file))
+    print("To perform a test run: test_executor.py {} test_file_name".format(cluster_config_file))
     print("To stop the cluster run: tear_down.py {}".format(cluster_config_file))
     # print("Fetching latest version of RPC server from {}...".format(RPC_SERVER_SCRIPT_URL))
     # script_path = "/tmp/rpc_server.py"

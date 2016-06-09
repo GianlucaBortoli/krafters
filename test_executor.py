@@ -2,35 +2,32 @@
 
 # argv[1] = masterConfig.json
 # argv[2] = test file
-# argv[3] = test_daemon address
 
 import json
 import logging
 import random
 import sys
-import xmlrpc.client
+from xmlrpc.client import ServerProxy as Server
 import re
 
-TEST_DAEMON_RPC_PORT = 12346
 
 class NetemMaster:
     nodes_rpc = {}
 
     def __init__(self, nodes):
-        for node in nodes:
-            self.nodes_rpc[str(node["id"])] = xmlrpc.client.ServerProxy(
-                    "http://" + str(node["address"]) + ":" + str(node["rpcPort"]))
+        self.nodes_rpc = {str(n["id"]): Server("http://{}:{}".format(n["address"], str(n["rpcPort"]))) for n in nodes}
 
     def modify_connection(self, source, target, netem_command, bidirectional=False):
-        if not str(source) == str(target):
-            if bidirectional:
-                print("modify connection from " + str(source) + " to " + str(
-                    target) + " '" + netem_command + "' bidirectional")
-                # self.nodes_rpc[source].modify_outgoing_connection(target, netem_command)
-                # self.nodes_rpc[target].modify_outgoing_connection(source, netem_command)
-            else:
-                print("modify connection from " + str(source) + " to " + str(target) + " '" + netem_command + "'")
-                # self.nodes_rpc[source].modify_outgoing_connection(target, netem_command)
+        if str(source) == str(target):
+            return
+        if bidirectional:
+            print("modify connection from " + str(source) + " to " + str(
+                target) + " '" + netem_command + "' bidirectional")
+            # self.nodes_rpc[source].modify_outgoing_connection(target, netem_command)
+            # self.nodes_rpc[target].modify_outgoing_connection(source, netem_command)
+        else:
+            print("modify connection from " + str(source) + " to " + str(target) + " '" + netem_command + "'")
+            # self.nodes_rpc[source].modify_outgoing_connection(target, netem_command)
 
     def modify_connections(self, sources, targets, netem_command, bidirectional=False):
         for source in sources:
@@ -155,41 +152,42 @@ class TestParser:
         return params
 
     def run_test(self, test_file, do_open=-1, pointers=[], index=0):
+        if index >= len(test_file):
+            return
 
-        if index < len(test_file):
-            test_line = test_file[index]
-            test_line = test_line.rstrip()
+        test_line = test_file[index]
+        test_line = test_line.rstrip()
 
-            if not test_line:
-                self.run_test(test_file, do_open, pointers, index + 1)
-            elif self.modify_link_pattern.match(test_line):
-                params = self.get_params(test_line, "link")
-                self.modify_link_from_to(params["ids"]["sources"], params["ids"]["targets"], params["netem_command"],
-                                         params["bidirectional"])
-            elif self.modify_random_link_pattern.match(test_line):
-                params = self.get_params(test_line, "rlink")
-                self.modify_random_link(params["connection_number"], params["netem_command"], params["bidirectional"])
-            elif self.reset_pattern.match(test_line):
-                self.reset()
-            elif self.run_pattern.match(test_line):
-                params = self.get_params(test_line, "run")
-                self.run_command(int(params["nop"]))
-            elif self.do_pattern.match(test_line):
-                do_open += 1
-                if len(pointers) < do_open + 1:
-                    pointers.append({"start": index, "repetition": 1})
-                else:
-                    pointers[do_open]["start"] = index
-                    pointers[do_open]["repetition"] = 1
-            elif self.times_pattern.match(test_line):
-                if pointers[do_open]["repetition"] < self.get_times(test_line):
-                    index = pointers[do_open]["start"]
-                    pointers[do_open]["repetition"] += 1
-                else:
-                    do_open -= 1
-            else:
-                print("command '" + test_line + "' unknown")
+        if not test_line:
             self.run_test(test_file, do_open, pointers, index + 1)
+        elif self.modify_link_pattern.match(test_line):
+            params = self.get_params(test_line, "link")
+            self.modify_link_from_to(params["ids"]["sources"], params["ids"]["targets"], params["netem_command"],
+                                     params["bidirectional"])
+        elif self.modify_random_link_pattern.match(test_line):
+            params = self.get_params(test_line, "rlink")
+            self.modify_random_link(params["connection_number"], params["netem_command"], params["bidirectional"])
+        elif self.reset_pattern.match(test_line):
+            self.reset()
+        elif self.run_pattern.match(test_line):
+            params = self.get_params(test_line, "run")
+            self.run_command(int(params["nop"]))
+        elif self.do_pattern.match(test_line):
+            do_open += 1
+            if len(pointers) < do_open + 1:
+                pointers.append({"start": index, "repetition": 1})
+            else:
+                pointers[do_open]["start"] = index
+                pointers[do_open]["repetition"] = 1
+        elif self.times_pattern.match(test_line):
+            if pointers[do_open]["repetition"] < self.get_times(test_line):
+                index = pointers[do_open]["start"]
+                pointers[do_open]["repetition"] += 1
+            else:
+                do_open -= 1
+        else:
+            print("command '" + test_line + "' unknown")
+        self.run_test(test_file, do_open, pointers, index + 1)
 
 
 def main():
@@ -197,20 +195,18 @@ def main():
     try:
         # Loads configuration file
         with open(sys.argv[1]) as configuration_file:
-            configuration = json.load(configuration_file)
+            conf = json.load(configuration_file)
+            test_parser = TestParser(NetemMaster(conf["nodes"]), len(conf["nodes"]), Server("http://" + conf["testDaemon"]))
+            try:
+                with open(sys.argv[2]) as f:
+                    test_file = f.readlines()
+                test_parser.run_test(test_file)
+            except:
+                print(sys.argv[1] + " is not a valid test file")
+                exit(1)
     except:
         print(sys.argv[1] + " is not a valid JSON file")
         exit(1)
-    try:
-        with open(sys.argv[2]) as f:
-            test_file = f.readlines()
-    except:
-        print(sys.argv[1] + " is not a valid test file")
-        exit(1)
-
-
-    test_parser = TestParser(NetemMaster(configuration["nodes"]), len(configuration["nodes"]), xmlrpc.client.ServerProxy("http://"+sys.argv[3]+":"+TEST_DAEMON_RPC_PORT))
-    test_parser.run_test(test_file)
 
 
 if __name__ == "__main__":

@@ -1,28 +1,25 @@
 #!/usr/bin/python3.4
 
 # Listen for test_executor
-# port to listen to: 12346
-# argv[1] = masterConfig.JSON
+# argv[1] = IP address of the machine running this script (where the test daemon will be started)
+# argv[2] = consensus algorithm
 
 from xmlrpc.server import SimpleXMLRPCServer
 import sys
-import json
-
 import time
 
-# constants
-RPC_LISTEN_PORT = 12346
+TEST_DAEMON_PORT = 12346
 
 
 # class used to implement different append requests for different algorithms
 class TestManager:
-    # default alforithm is not defined
+    # default algorithm is not defined
     algorithm = "undef"
 
     def __init__(self, algorithm):
         self.algorithm = algorithm
 
-    # performs a single foundamental operation according to the selected algorithm
+    # performs a single fundamental operation according to the selected algorithm
     def run_operation(self):
         if self.algorithm == "pso":
             # TODO add specific operation here
@@ -42,22 +39,13 @@ class TestManager:
 
 
 def main():
-    # Loads configuration file
-    try:
-        with open(sys.argv[1]) as configuration_file:
-            configuration = json.load(configuration_file)
-
-            # set up the rpc server
-            server = SimpleXMLRPCServer(("127.0.0.1", RPC_LISTEN_PORT))
-            # instantiate the test class
-            test_manager = TestManager(configuration["algorithm"])
-            # serve the run method
-            server.register_function(test_manager.run, "run")
-            # and serve forever
-            server.serve_forever()
-    except:
-        print(" invalid masterConfiguration.json")
-    #TODO add specific handlers for other exceptions
+    server = SimpleXMLRPCServer((sys.argv[1], TEST_DAEMON_PORT))
+    # instantiate the test class
+    test_manager = TestManager(sys.argv[2])
+    # serve the run method
+    server.register_function(test_manager.run, "run")
+    # and serve forever
+    server.serve_forever()
 
 
 if __name__ == "__main__":
