@@ -216,6 +216,7 @@ def provide_gce_cluster(nodes_num, algorithm):
     # ✓ 1. spin machines [configure daemons will be run by the startup script on every node]
 
     print("Going to run algorithm {} on cluster...".format(algorithm))
+    sleep(30)  # give time to VMs to complete their startup scripts
     if algorithm == "pso":
         pass  # nothing to configure
     elif algorithm == "rethinkdb":
@@ -232,7 +233,12 @@ def provide_gce_cluster(nodes_num, algorithm):
             json.dump(get_node_config(cluster, node), out_f, indent=4)
         upload_object(gcs, node_config_file, config_dir + config_file_template.format(node["vmID"]))
         configure_daemons.append(rpcClient('http://{}:{}'.format(node["address"], CONFIGURE_DAEMON_PORT)))
-        configure_daemons[-1].run_network_manager()
+        while True:
+            try:
+                configure_daemons[-1].run_network_manager()
+                break
+            except Exception as e:
+                print(e)
         # this rpc will download the node-specific configuration file from gs and run the network manager
         # each node can discover its configuration file by querying its own metadata
         print("Network manager active on {}:{}".format(node["address"], str(node["rpcPort"])))

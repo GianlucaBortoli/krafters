@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
 
 export DEBIAN_FRONTEND=noninteractive
-
-# run configure_daemon.py in background
+pwd
+sudo add-apt-repository -y ppa:fkrull/deadsnakes
+sudo apt-get update
+sudo apt-get install -y python3.4
+# fetch configure_daemon.py in background
 curl https://raw.githubusercontent.com/GianlucaBortoli/krafters/master/configure_daemon.py > configure_daemon.py
-chmod +x configure_daemon.py
+sudo chmod 777 configure_daemon.py
+# run configure_daemon.py in background
 ./configure_daemon.py &
 
 # install rethinkdb
