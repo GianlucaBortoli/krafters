@@ -8,7 +8,6 @@ from urllib.request import urlretrieve
 import subprocess
 import sys
 from contextlib import closing
-from googleapiclient import discovery
 from oauth2client.client import GoogleCredentials
 from googleapiclient import discovery
 from googleapiclient import http
@@ -225,7 +224,6 @@ def provide_gce_cluster(nodes_num, algorithm):
     # ✓ 2. run algorithm [via configure daemons]
 
     print("Running network manager on every node...")
-    node_file_path = "/tmp/provision_node_{}_config.json"
     gcs = discovery.build('storage', 'v1', credentials=credentials)
     for node in cluster:
         node_config_file = "/tmp/" + config_file_template.format(node["vmID"])
@@ -249,7 +247,7 @@ def provide_gce_cluster(nodes_num, algorithm):
     cluster_config_file = "masterConfig.json"  # this file will be used to tear down the cluster
     with open(cluster_config_file, "w") as out_f:
         json.dump({
-            "mode": "local",
+            "mode": "gce",
             "algorithm": algorithm,
             "testEndpoint": endpoint,
             "nodes": cluster
