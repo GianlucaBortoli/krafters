@@ -1,3 +1,5 @@
+#!/usr/bin/python3.4
+
 def main():
     # TODO tear down cluster
     pass

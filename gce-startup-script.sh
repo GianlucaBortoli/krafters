@@ -9,4 +9,4 @@ sudo apt-get update && \
     sudo apt-get install -y rethinkdb
 
 # run configure_daemon.py in background
-./configure_daemon &
+./configure_daemon.py &
