@@ -222,7 +222,7 @@ def provide_gce_cluster(nodes_num, algorithm):
     # ✓ 1. spin machines [configure daemons will be run by the startup script on every node]
 
     print("Going to run algorithm {} on cluster...".format(algorithm))
-    sleep(30)  # give time to VMs to complete their startup scripts
+    sleep(60)  # give time to VMs to complete their startup scripts
     if algorithm == "pso":
         pass  # nothing to configure
     elif algorithm == "rethinkdb":
@@ -250,7 +250,7 @@ def provide_gce_cluster(nodes_num, algorithm):
                 print(e)
                 retries += 1
                 if retries < 10:
-                    print("An error occurred while starting the network manager. Retrying ({}/{})...".format(retries))
+                    print("An error occurred while starting the network manager. Retrying ({}/{})...".format(retries, 10))
                 else:
                     print("An error occurred while starting the network manager. Unable to complete provisioning")
                     exit(2)  # TODO handle
@@ -268,7 +268,7 @@ def provide_gce_cluster(nodes_num, algorithm):
             print(e)
             retries += 1
             if retries < 10:
-                print("An error occurred while starting the test daemon. Retrying ({}/{})...".format(retries))
+                print("An error occurred while starting the test daemon. Retrying ({}/{})...".format(retries, 10))
             else:
                 print("An error occurred while starting the test daemon. Unable to complete provisioning")
                 exit(2)  # TODO handle

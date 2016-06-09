@@ -8,16 +8,21 @@
 # rethinkdb:    configure_rethinkdb_master, configure_rethinkdb_follower
 # paxos:        configure_paxos
 # pso:          < nothing to do here >
+from contextlib import closing
+import socket
 
 import subprocess as sb
 import os
 import sys
+from time import sleep
 from xmlrpc.server import SimpleXMLRPCServer
 
 # NOTE DO NOT ADD EXTERNAL DEPENDENCIES: THIS SCRIPT HAS TO BE EXECUTED IN A STANDALONE WAY ON VM STARTUP
 
 # some useful constants
 CONFIGURE_DAEMON_PORT = 12345
+NETWORK_MANAGER_PORT = 12346
+
 RETHINKDB_PORT = 12347  # TODO Useless?
 DEVNULL = open(os.devnull, 'wb')
 LOCAL_NODE_CONF_FILE = "node_conf.json"
@@ -48,28 +53,40 @@ def stop_rethinkdb():
 
 
 def run_test_daemon(algorithm):
-    command = [sys.executable, "test_daemon.py", "", algorithm]
+    command = [sys.executable, "test_daemon.py", "", algorithm]  #TODO CHECK
     sb.Popen(command, stdout=sb.PIPE, stderr=sb.PIPE)
     print("Test daemon started")
     return True
 
+
+def is_socket_open(host, port):
+    with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
+        return sock.connect_ex((host, port)) == 0
+
+
 def run_network_manager():
     # this rpc will download the node-specific configuration file from gs and run the network manager
     # each node can discover its configuration file by querying its own metadata
-    command = ["curl", "http://metadata.google.internal/computeMetadata/v1/instance/attributes/clusterConfig", "-H"
-                "Metadata-Flavor: Google"]
+    command = ["curl", "http://metadata.google.internal/computeMetadata/v1/instance/attributes/clusterConfig", "-H",
+               "Metadata-Flavor: Google"]
     out, _ = sb.Popen(command, stdout=sb.PIPE, stderr=sb.PIPE).communicate()
     gcs_node_conf_file = out.decode("utf-8")
     print("GCS file: {}".format(gcs_node_conf_file))
-    command[1] = ["http://metadata.google.internal/computeMetadata/v1/instance/attributes/bucket"]
+    command = ["curl", "http://metadata.google.internal/computeMetadata/v1/instance/attributes/bucket", "-H",
+               "Metadata-Flavor: Google"]
     out, _ = sb.Popen(command, stdout=sb.PIPE, stderr=sb.PIPE).communicate()
     bucket = out.decode("utf-8")
     print("GCS bucket: {}".format(bucket))
-    command = ["gsutil", "cp", "gs://" + bucket + "/" + gcs_node_conf_file, "./" + LOCAL_NODE_CONF_FILE]
-    sb.Popen(command, stdout=sb.PIPE, stderr=sb.PIPE).communicate()
+    command = ["sudo", "gsutil", "cp", "gs://" + bucket + "/" + gcs_node_conf_file, LOCAL_NODE_CONF_FILE]
+    print(command)
+    out, res = sb.Popen(command, stdout=sb.PIPE, stderr=sb.PIPE).communicate()
+    print(out)
+    print(res)
     print("GCS file download completed")
-    command = ["./network_manager.py", LOCAL_NODE_CONF_FILE]
-    sb.Popen(command, stdout=sb.PIPE, stderr=sb.PIPE)
+    command = ["sudo", "./network_manager.py", LOCAL_NODE_CONF_FILE]
+    sb.Popen(command, stdout=sb.PIPE, stderr=sb.PIPE)  # process is run asynchronously
+    while not is_socket_open("127.0.0.1", NETWORK_MANAGER_PORT):  # check that Popen actually started the script
+        sleep(0.3)
     print("Network manager started")
     return True
 
@@ -91,6 +108,7 @@ if __name__ == '__main__':
         server.register_function(run_network_manager, "run_network_manager")
         # finally serve them
         server.serve_forever()
-    except KeyboardInterrupt:
+    except KeyboardInterrupt as e:
+        print(e)
         print("\nProcess stopped by user...Bye!")
         sys.exit()

@@ -160,7 +160,7 @@ class NetemManager:
 def run_rpc_server(configuration):
     netem_manager = NetemManager(configuration["interface"], configuration["host"], configuration["peers"])
 
-    server = SimpleXMLRPCServer((str(configuration["host"]["address"]), configuration["rpcPort"]))
+    server = SimpleXMLRPCServer(("", configuration["rpcPort"]))
     server.register_instance(netem_manager)
     server.serve_forever()
 
@@ -171,9 +171,10 @@ def main():
         with open(sys.argv[1]) as configuration_file:
             configuration = json.load(configuration_file)
             run_rpc_server(configuration)
-    except:
+    except Exception as e:
         print((sys.argv[1] + " is not a valid JSON file"))
-        exit(1)
+        print(e)
+        exit(2)
 
 
 if __name__ == "__main__":
