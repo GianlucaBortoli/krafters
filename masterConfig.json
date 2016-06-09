@@ -14,6 +14,13 @@
             "port": 48370,
             "address": "127.0.0.1",
             "id": 2
+        },
+        {
+            "rpcPort": 57346,
+            "interface": "lo",
+            "port": 48371,
+            "address": "127.0.0.1",
+            "id": 3
         }
     ],
     "algorithm": "pso",

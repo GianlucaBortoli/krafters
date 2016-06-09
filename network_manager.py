@@ -158,12 +158,6 @@ class NetemManager:
 def run_rpc_server(configuration):
     netem_manager = NetemManager(configuration["interface"], configuration["host"], configuration["peers"])
 
-    # usage examples
-    # netem_manager.modify_incoming_connection("2", "loss 90%")
-    # netem_manager.modify_outgoing_connection("3", "delay 400ms")
-    # netem_manager.modify_connection("4", "loss 50% delay 200ms 100ms")
-
-    print(configuration["rpcPort"])
     server = SimpleXMLRPCServer((str(configuration["host"]["address"]), configuration["rpcPort"]))
     server.register_instance(netem_manager)
     server.serve_forever()
