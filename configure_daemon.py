@@ -8,6 +8,7 @@
 # rethinkdb:    configure_rethinkdb_master, configure_rethinkdb_follower
 # paxos:        configure_paxos
 # pso:          < nothing to do here >
+
 from contextlib import closing
 import socket
 
@@ -24,7 +25,6 @@ CONFIGURE_DAEMON_PORT = 12345
 TEST_DAEMON_PORT = 12346
 NETWORK_MANAGER_PORT = 12347
 
-RETHINKDB_PORT = 12347  # TODO Useless?
 DEVNULL = open(os.devnull, 'wb')
 LOCAL_NODE_CONF_FILE = "node_conf.json"
 
