@@ -9,6 +9,8 @@ from googleapiclient import discovery
 from provisioner import GCP_PROJECT_ID, GCE_ZONE_ID
 
 
+# TODO: clean GCS node-config file, dangling GCS startup script ACKs, destroy rethinkdb cluster
+
 def kill_process_by_port(port):
     command = ["fuser", "-k", str(port) + "/tcp", str(port) + "/udp"]
     return subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()

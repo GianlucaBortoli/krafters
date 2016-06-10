@@ -7,11 +7,13 @@ from time import sleep
 import subprocess
 import sys
 from contextlib import closing
+import xmlrpc
 from oauth2client.client import GoogleCredentials
 from googleapiclient import discovery
 from googleapiclient import http
 from test_daemon import TEST_DAEMON_PORT
-from configure_daemon import CONFIGURE_DAEMON_PORT, NETWORK_MANAGER_PORT
+from configure_daemon import CONFIGURE_DAEMON_PORT, NETWORK_MANAGER_PORT, configure_rethinkdb_master, \
+    configure_rethinkdb_follower
 from xmlrpc.client import ServerProxy as rpcClient
 
 MAX_CLUSTER_NODES = 8  # CPU-quota on GCE
@@ -22,7 +24,7 @@ PYTHON2_ENV = None
 # RPC_SERVER_SCRIPT_URL = "https://raw.githubusercontent.com/GianlucaBortoli/krafters/master/network_manager.py"
 
 GCP_PROJECT_ID = "krafters-1334"
-GS_BUCKET = "krafters"
+GCS_BUCKET = "krafters"
 GCE_REGION_ID = "us-central1"
 GCE_ZONE_ID = "us-central1-c"
 GCE_INSTANCE_TYPE = "n1-standard-1"
@@ -31,6 +33,11 @@ GCE_OS_FAMILY = "ubuntu-1204-lts"
 GCE_FIREWALL_RULE_NAME = "allow-all-tcp-udp"
 
 CONSENSUS_ALGORITHM_PORT = 12348
+GCE_RETHINKDB_PORTS = {
+    "driver_port": CONSENSUS_ALGORITHM_PORT,
+    "cluster_port": CONSENSUS_ALGORITHM_PORT + 1,
+    "http_port": CONSENSUS_ALGORITHM_PORT + 2
+}
 
 
 def get_free_random_port():
@@ -57,6 +64,35 @@ def get_node_config(cluster, node):
                 "id": peer["id"]} for peer in cluster if peer["id"] != node["id"]]}
 
 
+def configure_rethinkdb_local(cluster):
+    # Configures every node of the cluster.
+    master_cluster_port = get_free_random_port()  # this is the one for joining
+    # local -> get driver_port from file (provisioner) and use random
+    #          ports for all the others
+
+    print("m{}: ".format(cluster[0]['id']), cluster[0])
+    print(configure_rethinkdb_master(master_cluster_port, cluster[0]['port'], get_free_random_port()))
+    for node in cluster[1:]:
+        print("f{}: ".format(node['id']), node)
+        print(configure_rethinkdb_follower(node['id'], cluster[0]['address'], master_cluster_port,
+                                           get_free_random_port(), node['port'], get_free_random_port()))
+
+
+def configure_rethinkdb_gce(cluster):
+    # gce -> use GCE_PORTS since we are in different nodes and we don't have problems with ports
+    rpc_server = xmlrpc.client.ServerProxy('http://{}:{}'.format(cluster[0]['address'], CONFIGURE_DAEMON_PORT))
+    print(rpc_server.configure_rethinkdb_master(GCE_RETHINKDB_PORTS['cluster_port'], GCE_RETHINKDB_PORTS['driver_port'],
+                                                GCE_RETHINKDB_PORTS['http_port']))
+
+    for node in cluster[1:]:
+        rpc_server = xmlrpc.client.ServerProxy('http://{}:{}'.format(node['address'], CONFIGURE_DAEMON_PORT))
+        print(rpc_server.configure_rethinkdb_follower(node['id'], cluster[0]['address'],
+                                                      GCE_RETHINKDB_PORTS['cluster_port'],
+                                                      GCE_RETHINKDB_PORTS['cluster_port'],
+                                                      GCE_RETHINKDB_PORTS['driver_port'],
+                                                      GCE_RETHINKDB_PORTS['http_port']))
+
+
 def provide_local_cluster(nodes_num, algorithm):
     cluster = []
     for i in range(1, nodes_num + 1):
@@ -74,8 +110,7 @@ def provide_local_cluster(nodes_num, algorithm):
     if algorithm == "pso":
         pass  # nothing to configure
     elif algorithm == "rethinkdb":
-        #TODO: run local cluster
-        pass  # TODO run service and configure master-slave
+        configure_rethinkdb_local(cluster)
     # ✓ 2. run algorithm [no need to run a configure daemon on localhost]
 
     print("Running network manager on every node...")
@@ -108,7 +143,7 @@ def provide_local_cluster(nodes_num, algorithm):
         json.dump({
             "mode": "local",
             "algorithm": algorithm,
-            "testEndpoint": endpoint,
+            "testDaemon": endpoint,
             "nodes": cluster
         }, out_f, indent=4)
     print("Cluster configuration saved in file {}.\n".format(cluster_config_file))
@@ -118,6 +153,14 @@ def provide_local_cluster(nodes_num, algorithm):
 
 def list_instances(compute):
     return compute.instances().list(project=GCP_PROJECT_ID, zone=GCE_ZONE_ID).execute().get("items", [])
+
+
+def gcs_file_exists(gcs, file_name):
+    try:
+        gcs.objects().get(bucket=GCS_BUCKET, object=file_name).execute()
+        return True
+    except:
+        return False
 
 
 def create_instance(gce, name, metadata, script):
@@ -148,7 +191,7 @@ def create_instance(gce, name, metadata, script):
         "serviceAccounts": [{
             "email": "default",
             "scopes": [
-                "https://www.googleapis.com/auth/devstorage.read_only",
+                "https://www.googleapis.com/auth/devstorage.read_write",
                 "https://www.googleapis.com/auth/logging.write",
                 "https://www.googleapis.com/auth/monitoring.write",
                 "https://www.googleapis.com/auth/servicecontrol",
@@ -181,7 +224,7 @@ def create_instance(gce, name, metadata, script):
 def upload_object(gcs, file_path, file_name):
     body = {'name': file_name}
     with open(file_path, 'rb') as f:
-        req = gcs.objects().insert(bucket=GS_BUCKET, body=body, predefinedAcl="publicRead",
+        req = gcs.objects().insert(bucket=GCS_BUCKET, body=body, predefinedAcl="publicRead",
                                    media_body=http.MediaIoBaseUpload(f, 'application/octet-stream'))
         resp = req.execute()
     return resp
@@ -196,7 +239,9 @@ def provide_gce_cluster(nodes_num, algorithm):
     vm_ids = []
     for i in range(1, nodes_num + 1):
         vm_ids.append("vm-node-{}".format(i))
-        metadata = {"bucket": GS_BUCKET, "clusterConfig": config_dir + config_file_template.format(vm_ids[-1])}
+        metadata = {"bucket": GCS_BUCKET,
+                    "clusterConfig": config_dir + config_file_template.format(vm_ids[-1]),
+                    "myid": vm_ids[-1]}
         print("Starting a new virtual machine with name {}".format(vm_ids[-1]))
         zone_operations.append(create_instance(gce, vm_ids[-1], metadata, "gce-startup-script.sh"))
         # vm creation is run asynchronously: check that the operation is really completed
@@ -240,17 +285,22 @@ def provide_gce_cluster(nodes_num, algorithm):
         print("Firewall rule to allow traffic created.")
     # ✓ 1.1 allow network traffic on VMs
 
+    print("Waiting for startup scripts to be completed on VMs...")
+    gcs = discovery.build('storage', 'v1', credentials=credentials)
+    for vm_id in vm_ids:
+        while not gcs_file_exists(gcs, vm_id):
+            sleep(2)
+        gcs.objects().delete(bucket=GCS_BUCKET, object=vm_id).execute()
+    # ✓ 1.2 wait for startup scripts
+
     print("Going to run algorithm {} on cluster...".format(algorithm))
-    sleep(55)  # give time to VMs to complete their startup scripts
     if algorithm == "pso":
-        pass  # nothing to configure
+        pass
     elif algorithm == "rethinkdb":
-        #TODO: here call methods on configure_daemon.py
-        pass  # TODO run service and configure master-slave
+        configure_rethinkdb_gce(cluster)
     # ✓ 2. run algorithm [via configure daemons]
 
     print("Running network manager on every node...")
-    gcs = discovery.build('storage', 'v1', credentials=credentials)
     configure_daemons = []
     for node in cluster:
         node_config_file = "/tmp/" + config_file_template.format(node["vmID"])

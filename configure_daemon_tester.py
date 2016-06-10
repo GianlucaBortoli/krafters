@@ -4,15 +4,16 @@
 
 import xmlrpc.client
 import json
+from configure_daemon import CONFIGURE_DAEMON_PORT
 from provisioner import get_free_random_port
 
 # some useful constants
 CONFIG_FILE = './masterConfig.json'
-RPC_PORT = 12345
-GCE_PORTS = {
-    "cluster_port": 12347,
-    "driver_port": 12348,
-    "http_port": 12349
+CONSENSUS_ALGORITHM_PORT = 12348
+GCE_RETHINKDB_PORTS = {
+    "driver_port": CONSENSUS_ALGORITHM_PORT,
+    "cluster_port": CONSENSUS_ALGORITHM_PORT + 1,
+    "http_port": CONSENSUS_ALGORITHM_PORT + 2
 }
 
 
@@ -28,7 +29,7 @@ def configure_rethinkdb(cluster, mode):
         #          ports for all the others
         print("Local mode")
         for node in cluster:
-            s = createServer(node['address'], RPC_PORT)
+            s = createServer(node['address'], CONFIGURE_DAEMON_PORT)
             if node['id'] == 1:
                 print("m{}: ".format(node['id']), node)
                 # the first node is always the master
@@ -49,18 +50,18 @@ def configure_rethinkdb(cluster, mode):
         #        we don't have problems with ports
         print("GCE mode")
         for node in cluster:
-            s = createServer(node['address'], RPC_PORT)
+            s = createServer(node['address'], CONFIGURE_DAEMON_PORT)
             if node['id'] == 1:
-                print(s.configure_rethinkdb_master(GCE_PORTS['cluster_port'],
-                    GCE_PORTS['driver_port'],
-                    GCE_PORTS['http_port']))
+                print(s.configure_rethinkdb_master(GCE_RETHINKDB_PORTS['cluster_port'],
+                    GCE_RETHINKDB_PORTS['driver_port'],
+                    GCE_RETHINKDB_PORTS['http_port']))
             else:
                 print(s.configure_rethinkdb_follower(node['id'],
                     cluster[0]['address'],
-                    GCE_PORTS['cluster_port'],
-                    GCE_PORTS['cluster_port'],
-                    GCE_PORTS['driver_port'],
-                    GCE_PORTS['http_port']))
+                    GCE_RETHINKDB_PORTS['cluster_port'],
+                    GCE_RETHINKDB_PORTS['cluster_port'],
+                    GCE_RETHINKDB_PORTS['driver_port'],
+                    GCE_RETHINKDB_PORTS['http_port']))
     else:
         print("Mode {} not recognized".format(mode))
         return
