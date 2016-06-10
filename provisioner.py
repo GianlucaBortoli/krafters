@@ -4,7 +4,6 @@ import argparse
 import json
 import socket
 from time import sleep
-from urllib.request import urlretrieve
 import subprocess
 import sys
 from contextlib import closing
@@ -12,7 +11,7 @@ from oauth2client.client import GoogleCredentials
 from googleapiclient import discovery
 from googleapiclient import http
 from test_daemon import TEST_DAEMON_PORT
-from configure_daemon import CONFIGURE_DAEMON_PORT
+from configure_daemon import CONFIGURE_DAEMON_PORT, NETWORK_MANAGER_PORT
 from xmlrpc.client import ServerProxy as rpcClient
 
 MAX_CLUSTER_NODES = 8  # CPU-quota on GCE
@@ -27,10 +26,11 @@ GS_BUCKET = "krafters"
 GCE_REGION_ID = "us-central1"
 GCE_ZONE_ID = "us-central1-c"
 GCE_INSTANCE_TYPE = "n1-standard-1"
-GCE_OS_PROJECT = "ubuntu-os-cloud"  # TODO FIX
+GCE_OS_PROJECT = "ubuntu-os-cloud"
 GCE_OS_FAMILY = "ubuntu-1204-lts"
+GCE_FIREWALL_RULE_NAME = "allow-all-tcp-udp"
 
-CONSENSUS_ALGORITHM_PORT = 12347
+CONSENSUS_ALGORITHM_PORT = 12348
 
 
 def get_free_random_port():
@@ -197,22 +197,25 @@ def provide_gce_cluster(nodes_num, algorithm):
     for i in range(1, nodes_num + 1):
         vm_ids.append("vm-node-{}".format(i))
         metadata = {"bucket": GS_BUCKET, "clusterConfig": config_dir + config_file_template.format(vm_ids[-1])}
+        print("Starting a new virtual machine with name {}".format(vm_ids[-1]))
         zone_operations.append(create_instance(gce, vm_ids[-1], metadata, "gce-startup-script.sh"))
         # vm creation is run asynchronously: check that the operation is really completed
 
     cluster = []
     for (i, zone) in [(i, zone_op["name"]) for (i, zone_op) in enumerate(zone_operations)]:
+        print("Checking if virtual machine {} is ready...".format(vm_ids[i]))
         while True:
             result = gce.zoneOperations().get(project=GCP_PROJECT_ID, zone=GCE_ZONE_ID, operation=zone).execute()
             if result["status"] == "DONE":
+                print("Virtual machine {} is ready.".format(vm_ids[i]))
                 # if "error" in result: raise Exception(result["error"])  # TODO handle error
                 result = gce.instances().get(project=GCP_PROJECT_ID, zone=GCE_ZONE_ID, instance=vm_ids[i]).execute()
                 new_node = {
                     "id": i + 1,
-                    "address": result["networkInterfaces"][0]["accessConfigs"][0]["natIP"],
+                    "address": result["networkInterfaces"][0]["accessConfigs"][0]["natIP"],  # ephemeral external IP
                     "port": CONSENSUS_ALGORITHM_PORT,
-                    "rpcPort": TEST_DAEMON_PORT,
-                    "interface": result["networkInterfaces"][0]["name"],
+                    "rpcPort": NETWORK_MANAGER_PORT,
+                    "interface": result["networkInterfaces"][0]["name"],  # network interface name is usually nic0
                     "vmID": vm_ids[i]
                 }
                 print("Adding node to the configuration: {}".format(new_node))
@@ -221,8 +224,24 @@ def provide_gce_cluster(nodes_num, algorithm):
             sleep(1)
     # ✓ 1. spin machines [configure daemons will be run by the startup script on every node]
 
+    try:
+        gce.firewalls().get(project=GCP_PROJECT_ID, firewall=GCE_FIREWALL_RULE_NAME).execute()
+        print("Firewall rule to allow traffic already exists.")
+    except:  # rule does not exist: create it
+        print("Creating firewall rule to allow traffic...")
+        firewall_rule = {
+            "description": "Allow traffic on every TCP/UDP port",
+            "allowed": [{"IPProtocol": "tcp", "ports": ["1-65535"]},
+                        {"IPProtocol": "udp", "ports": ["1-65535"]},
+                        {"IPProtocol": "icmp"}],
+            "name": GCE_FIREWALL_RULE_NAME,
+        }
+        gce.firewalls().insert(project=GCP_PROJECT_ID, body=firewall_rule).execute()
+        print("Firewall rule to allow traffic created.")
+    # ✓ 1.1 allow network traffic on VMs
+
     print("Going to run algorithm {} on cluster...".format(algorithm))
-    sleep(60)  # give time to VMs to complete their startup scripts
+    sleep(55)  # give time to VMs to complete their startup scripts
     if algorithm == "pso":
         pass  # nothing to configure
     elif algorithm == "rethinkdb":
@@ -257,7 +276,7 @@ def provide_gce_cluster(nodes_num, algorithm):
         print("Network manager active on {}:{}".format(node["address"], str(node["rpcPort"])))
     # ✓ 3. run network managers
 
-    endpoint = cluster[0]["address"] + ":" + str(TEST_DAEMON_PORT)  # arbitrarily run the test daemon on the first node
+    endpoint = cluster[0]["address"] + ":" + str(TEST_DAEMON_PORT)  # arbitrarily run the test daemon on first node
     print("Running the test daemon on {}...".format(endpoint))
     retries = 0
     while True:
@@ -287,11 +306,6 @@ def provide_gce_cluster(nodes_num, algorithm):
     print("Cluster configuration saved in file {}.\n".format(cluster_config_file))
     print("To perform a test run: test_executor.py {} test_file_name".format(cluster_config_file))
     print("To stop the cluster run: tear_down.py {}".format(cluster_config_file))
-    # print("Fetching latest version of RPC server from {}...".format(RPC_SERVER_SCRIPT_URL))
-    # script_path = "/tmp/rpc_server.py"
-    # urlretrieve(RPC_SERVER_SCRIPT_URL, script_path) TODO uncomment when committing new network_manager.py
-    # print("Script downloaded in {}. Fetching available ports on localhost...".format(script_path))
-    pass
 
 
 def main():

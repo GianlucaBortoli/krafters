@@ -21,11 +21,13 @@ from xmlrpc.server import SimpleXMLRPCServer
 
 # some useful constants
 CONFIGURE_DAEMON_PORT = 12345
-NETWORK_MANAGER_PORT = 12346
+TEST_DAEMON_PORT = 12346
+NETWORK_MANAGER_PORT = 12347
 
 RETHINKDB_PORT = 12347  # TODO Useless?
 DEVNULL = open(os.devnull, 'wb')
 LOCAL_NODE_CONF_FILE = "node_conf.json"
+
 
 def configure_rethinkdb_master(cluster_port, driver_port, http_port):
     # the cluster_port is the one to be used for joining the master
@@ -53,8 +55,10 @@ def stop_rethinkdb():
 
 
 def run_test_daemon(algorithm):
-    command = [sys.executable, "test_daemon.py", "", algorithm]  #TODO CHECK
-    sb.Popen(command, stdout=sb.PIPE, stderr=sb.PIPE)
+    command = ["sudo", "./test_daemon.py", "", algorithm]
+    sb.Popen(command, stdout=sb.PIPE, stderr=sb.PIPE)  # process is run asynchronously
+    while not is_socket_open("127.0.0.1", TEST_DAEMON_PORT):  # check that Popen actually started the script
+        sleep(0.3)
     print("Test daemon started")
     return True
 
@@ -77,11 +81,10 @@ def run_network_manager():
     out, _ = sb.Popen(command, stdout=sb.PIPE, stderr=sb.PIPE).communicate()
     bucket = out.decode("utf-8")
     print("GCS bucket: {}".format(bucket))
-    command = ["sudo", "gsutil", "cp", "gs://" + bucket + "/" + gcs_node_conf_file, LOCAL_NODE_CONF_FILE]
-    print(command)
-    out, res = sb.Popen(command, stdout=sb.PIPE, stderr=sb.PIPE).communicate()
+    command = ["sudo", "gsutil", "cp", "gs://{}/{}".format(bucket, gcs_node_conf_file), LOCAL_NODE_CONF_FILE]
+    out, err = sb.Popen(command, stdout=sb.PIPE, stderr=sb.PIPE).communicate()
     print(out)
-    print(res)
+    print(err)
     print("GCS file download completed")
     command = ["sudo", "./network_manager.py", LOCAL_NODE_CONF_FILE]
     sb.Popen(command, stdout=sb.PIPE, stderr=sb.PIPE)  # process is run asynchronously
