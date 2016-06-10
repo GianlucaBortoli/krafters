@@ -16,7 +16,6 @@ from xmlrpc.server import SimpleXMLRPCServer
 
 # some useful constants
 CONFIGURE_DAEMON_PORT = 12345
-RETHINKDB_PORT = 12347  # TODO Useless?
 DEVNULL = open(os.devnull, 'wb')
 
 
@@ -63,7 +62,7 @@ def configure_paxos():
 
 if __name__ == '__main__':
     try:
-        server = SimpleXMLRPCServer(("localhost", CONFIGURE_DAEMON_PORT))
+        server = SimpleXMLRPCServer(('', CONFIGURE_DAEMON_PORT))
         print("Configure daemon listening on port {}...".format(CONFIGURE_DAEMON_PORT))
         # register all exposed functions
         server.register_function(configure_rethinkdb_master, "configure_rethinkdb_master")

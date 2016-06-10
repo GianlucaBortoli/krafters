@@ -6,8 +6,9 @@ import xmlrpc.client
 import json
 from provisioner import get_free_random_port
 
-RPC_PORT = 12345
+# some useful constants
 CONFIG_FILE = './masterConfig.json'
+RPC_PORT = 12345
 GCE_PORTS = {
     "cluster_port": 12347,
     "driver_port": 12348,
@@ -21,29 +22,30 @@ def createServer(ip, port):
 
 def configure_rethinkdb(cluster, mode):
     # Configures every node of the cluster.
+    master_cluster_port = get_free_random_port() # this is the one for joining
     if mode == "local":
-        # local -> get cluster_port from file and use random ports
-        #          for all the others
+        # local -> get driver_port from file (provisioner) and use random
+        #          ports for all the others
         print("Local mode")
         for node in cluster:
             s = createServer(node['address'], RPC_PORT)
             if node['id'] == 1:
                 print("m{}: ".format(node['id']), node)
                 # the first node is always the master
-                print(s.configure_rethinkdb_master(node['port'],
-                    get_free_random_port(), 
+                print(s.configure_rethinkdb_master(master_cluster_port,
+                    node['port'],
                     get_free_random_port()))
             else:
                 print("f{}: ".format(node['id']), node)
                 # all the others are followers
                 print(s.configure_rethinkdb_follower(node['id'],
                     cluster[0]['address'],
-                    cluster[0]['port'], 
-                    node['port'], 
+                    master_cluster_port,
                     get_free_random_port(),
+                    node['port'],
                     get_free_random_port()))
     elif mode == "gce":
-        # gce -> use GCE_PORTS since we are in different nodes and 
+        # gce -> use GCE_PORTS since we are in different nodes and
         #        we don't have problems with ports
         print("GCE mode")
         for node in cluster:
