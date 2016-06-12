@@ -63,6 +63,7 @@ target/
 
 # rethinkdb things
 rethinkdb_data*
+debug.log
 
 # tmp data
 *.swp
