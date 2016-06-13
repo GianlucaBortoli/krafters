@@ -13,6 +13,7 @@ import rethinkdb as r
 
 # some useful constants
 TEST_DAEMON_PORT = 12346
+
 # rethinkdb things
 CONSENSUS_ALGORITHM_PORT = 12348
 RETHINKDB_DB_NAME = 'test'
@@ -85,7 +86,11 @@ class TestManager:
             self.run_operation()
             results.append(time.clock() - t0)
         # close rethinkdb connection
-        self.connection.close()
+        try:
+            self.connection.close()
+        except:
+            pass
+
         return results
 
 
