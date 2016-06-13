@@ -4,7 +4,7 @@ on 2 connections set loss 10%
 reset
 do
     run  100
-    from 2 3 to 4 bidirectional set delay 200ms
+    from 2 3 to 1 bidirectional set delay 200ms
     from rand to all set loss 30%
     run 100
     do

@@ -6,23 +6,23 @@
         {
             "id": 1,
             "address": "127.0.0.1",
-            "port": 58912,
+            "port": 10001,
             "interface": "lo",
-            "rpcPort": 45096
+            "rpcPort": 20001
         },
         {
             "id": 2,
             "address": "127.0.0.1",
-            "port": 46152,
+            "port": 10002,
             "interface": "lo",
-            "rpcPort": 41695
+            "rpcPort": 20002
         },
         {
             "id": 3,
             "address": "127.0.0.1",
-            "port": 50326,
+            "port": 10003,
             "interface": "lo",
-            "rpcPort": 38868
+            "rpcPort": 20003
         }
     ]
 }
