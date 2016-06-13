@@ -29,10 +29,10 @@ DEVNULL = open(os.devnull, 'wb')
 LOCAL_NODE_CONF_FILE = "node_conf.json"
 
 
-def configure_rethinkdb_master(cluster_port, driver_port, http_port):
+def configure_rethinkdb_master(cluster_port, driver_port, http_port, canonical_address):
     # the cluster_port is the one to be used for joining the master
-    cmd = "rethinkdb --bind all --cluster-port {cp} --driver-port {dp} --http-port {hp} &".\
-        format(cp=cluster_port, dp=driver_port, hp=http_port)
+    cmd = "rethinkdb --bind all --cluster-port {cp} --driver-port {dp} --http-port {hp} --canonical-address {ca} &".\
+        format(cp=cluster_port, dp=driver_port, hp=http_port, ca=canonical_address)
     p = sb.Popen(cmd, shell=True, stdout=DEVNULL)
     p.communicate()
     return "master on port {} up".format(cluster_port)

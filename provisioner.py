@@ -12,8 +12,8 @@ from oauth2client.client import GoogleCredentials
 from googleapiclient import discovery
 from googleapiclient import http
 from test_daemon import TEST_DAEMON_PORT
-from configure_daemon import CONFIGURE_DAEMON_PORT, NETWORK_MANAGER_PORT, configure_rethinkdb_master, \
-    configure_rethinkdb_follower
+from configure_daemon import CONFIGURE_DAEMON_PORT, NETWORK_MANAGER_PORT, \
+    configure_rethinkdb_master, configure_rethinkdb_follower
 from xmlrpc.client import ServerProxy as rpcClient
 
 MAX_CLUSTER_NODES = 8  # CPU-quota on GCE
@@ -71,7 +71,7 @@ def configure_rethinkdb_local(cluster):
     #          ports for all the others
 
     print("m{}: ".format(cluster[0]['id']), cluster[0])
-    print(configure_rethinkdb_master(master_cluster_port, cluster[0]['port'], get_free_random_port()))
+    print(configure_rethinkdb_master(master_cluster_port, cluster[0]['port'], get_free_random_port(), 'localhost'))
     for node in cluster[1:]:
         print("f{}: ".format(node['id']), node)
         print(configure_rethinkdb_follower(node['id'], cluster[0]['address'], master_cluster_port,
@@ -82,7 +82,8 @@ def configure_rethinkdb_gce(cluster):
     # gce -> use GCE_PORTS since we are in different nodes and we don't have problems with ports
     rpc_server = xmlrpc.client.ServerProxy('http://{}:{}'.format(cluster[0]['address'], CONFIGURE_DAEMON_PORT))
     print(rpc_server.configure_rethinkdb_master(GCE_RETHINKDB_PORTS['cluster_port'], GCE_RETHINKDB_PORTS['driver_port'],
-                                                GCE_RETHINKDB_PORTS['http_port']))
+                                                GCE_RETHINKDB_PORTS['http_port'],
+                                                cluster[0]['address']))
 
     for node in cluster[1:]:
         rpc_server = xmlrpc.client.ServerProxy('http://{}:{}'.format(node['address'], CONFIGURE_DAEMON_PORT))
