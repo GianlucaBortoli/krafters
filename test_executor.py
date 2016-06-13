@@ -18,20 +18,33 @@ class NetemMaster:
     nodes_rpc = {}
 
     def __init__(self, nodes):
-        self.nodes_rpc = {str(n["id"]): Server("http://{}:{}".format(n["address"], str(n["rpcPort"]))) for n in nodes}
+        for n in nodes:
+            self.nodes_rpc[str(n["id"])] = Server("http://{}:{}".format(n["address"], str(n["rpcPort"])))
+        for n in nodes:
+            self.nodes_rpc[str(n["id"])].clean_all_qdisc()
+            self.nodes_rpc[str(n["id"])].create_root_qdisc()
+        for n in nodes:
+            if not self.nodes_rpc[str(n["id"])].init_qdisc():
+                print("Error initializing qdiscs")
+                sys.exit(1)
 
     # modify connection to source to target using netem_command
     def modify_connection(self, source, target, netem_command, bidirectional=False):
+
         if str(source) == str(target):
             return
         if bidirectional:
             print("modify connection from " + str(source) + " to " + str(
                     target) + " '" + netem_command + "' bidirectional")
-            # self.nodes_rpc[source].modify_outgoing_connection(target, netem_command)
-            # self.nodes_rpc[target].modify_outgoing_connection(source, netem_command)
+            if not self.nodes_rpc[str(source)].modify_outgoing_connection(str(target), netem_command) or not \
+            self.nodes_rpc[str(target)].modify_outgoing_connection(str(source), netem_command):
+                print("Error while modifying network!")
+                sys.exit(1)
         else:
             print("modify connection from " + str(source) + " to " + str(target) + " '" + netem_command + "'")
-            # self.nodes_rpc[source].modify_outgoing_connection(target, netem_command)
+            if not self.nodes_rpc[str(source)].modify_outgoing_connection(str(target), netem_command):
+                print("Error while modifying network!")
+                sys.exit(1)
 
     # apply netem_command to multiple commands
     def modify_connections(self, sources, targets, netem_command, bidirectional=False):
@@ -83,10 +96,10 @@ class TestParser:
         selected = set()
         n_selected = 0
         while n_selected < connection_number:
-            source = random.randrange(0, self.nodes_number)
+            source = random.randrange(0, self.nodes_number) + 1
             target = source
             while target == source:
-                target = random.randrange(0, self.nodes_number)
+                target = random.randrange(0, self.nodes_number) + 1
             if not str(source) + "-" + str(target) in selected:
                 self.netem_master.modify_connection(source, target, netem_command, bidirectional)
                 if bidirectional:
@@ -96,9 +109,9 @@ class TestParser:
 
     # resets every connection, related to reset command
     def reset(self):
-        for i in range(0, self.nodes_number):
+        for i in range(1, self.nodes_number):
             for j in range(i, self.nodes_number):
-                self.netem_master.modify_connection(i, j, "", True)
+                self.netem_master.modify_connection(i, j, " ", True)
 
     # resolve "rand" and "all" keywords in commands
     def resolve_ids(self, ids):
@@ -108,11 +121,14 @@ class TestParser:
         for key, values in ids.items():
             for value in values:
                 if value.isdigit():
-                    referred_ids.add(int(value))
+                    digit = int(value)
+                    if digit > self.nodes_number:
+                        raise
+                    referred_ids.add(digit)
                 if value == "rand":
                     random_values_count += 1
         while random_values_count > 0:
-            ran = random.randrange(self.nodes_number)
+            ran = random.randrange(self.nodes_number) + 1
             if ran not in referred_ids:
                 referred_ids.add(ran)
                 random_values.append(ran)
@@ -127,7 +143,7 @@ class TestParser:
                     random_values_count += 1
                 elif values[i] == "all":
                     del values[i]
-                    for j in range(0, self.nodes_number):
+                    for j in range(1, self.nodes_number):
                         ids[key].append(str(j))
                 elif not values[i].isdigit():
                     print("unknown id '" + values[i] + "' : it will be removed")
@@ -178,7 +194,7 @@ class TestParser:
             try:
                 test_line = test_file[index]
                 test_line = test_line.rstrip()
-
+                print(">" + test_line)
                 if not test_line:
                     pass
                 elif self.modify_link_pattern.match(test_line):
@@ -218,7 +234,7 @@ class TestParser:
                 index += 1
             except:
                 print(
-                    "Command \n\t>'" + str(test_line) + "'\n at line " + str(index + 1) + " is not well formed!")
+                        "Command \n\t>'" + str(test_line) + "'\n at line " + str(index + 1) + " is not well formed!")
                 break
 
 
