@@ -170,43 +170,56 @@ class TestParser:
         return params
 
     # runs test file's command one after the other
-    def run_test(self, test_file, do_open=-1, pointers=[], index=0):
-        if index >= len(test_file):
-            return
+    def run_test(self, test_file):
+        do_open = -1
+        pointers = []
+        index = 0
+        while index < len(test_file):
+            try:
+                test_line = test_file[index]
+                test_line = test_line.rstrip()
 
-        test_line = test_file[index]
-        test_line = test_line.rstrip()
-
-        if not test_line:
-            self.run_test(test_file, do_open, pointers, index + 1)
-        elif self.modify_link_pattern.match(test_line):
-            params = self.get_params(test_line, "link")
-            self.modify_link_from_to(params["ids"]["sources"], params["ids"]["targets"], params["netem_command"],
-                                     params["bidirectional"])
-        elif self.modify_random_link_pattern.match(test_line):
-            params = self.get_params(test_line, "rlink")
-            self.modify_random_link(params["connection_number"], params["netem_command"], params["bidirectional"])
-        elif self.reset_pattern.match(test_line):
-            self.reset()
-        elif self.run_pattern.match(test_line):
-            params = self.get_params(test_line, "run")
-            self.run_command(int(params["nop"]))
-        elif self.do_pattern.match(test_line):
-            do_open += 1
-            if len(pointers) < do_open + 1:
-                pointers.append({"start": index, "repetition": 1})
-            else:
-                pointers[do_open]["start"] = index
-                pointers[do_open]["repetition"] = 1
-        elif self.times_pattern.match(test_line):
-            if pointers[do_open]["repetition"] < self.get_times(test_line):
-                index = pointers[do_open]["start"]
-                pointers[do_open]["repetition"] += 1
-            else:
-                do_open -= 1
-        else:
-            print("command '" + test_line + "' unknown")
-        self.run_test(test_file, do_open, pointers, index + 1)
+                if not test_line:
+                    pass
+                elif self.modify_link_pattern.match(test_line):
+                    params = self.get_params(test_line, "link")
+                    self.modify_link_from_to(params["ids"]["sources"], params["ids"]["targets"],
+                                             params["netem_command"],
+                                             params["bidirectional"])
+                elif self.modify_random_link_pattern.match(test_line):
+                    params = self.get_params(test_line, "rlink")
+                    self.modify_random_link(params["connection_number"], params["netem_command"],
+                                            params["bidirectional"])
+                elif self.reset_pattern.match(test_line):
+                    self.reset()
+                elif self.run_pattern.match(test_line):
+                    params = self.get_params(test_line, "run")
+                    try:
+                        self.run_command(int(params["nop"]))
+                    except:
+                        print("Unable to connect to test_daemon")
+                        break
+                elif self.do_pattern.match(test_line):
+                    do_open += 1
+                    if len(pointers) < do_open + 1:
+                        pointers.append({"start": index, "repetition": 1})
+                    else:
+                        pointers[do_open]["start"] = index
+                        pointers[do_open]["repetition"] = 1
+                elif self.times_pattern.match(test_line):
+                    if pointers[do_open]["repetition"] < self.get_times(test_line):
+                        index = pointers[do_open]["start"]
+                        pointers[do_open]["repetition"] += 1
+                    else:
+                        do_open -= 1
+                else:
+                    print("Command \n\t>'" + str(test_line) + "'\n at line " + str(index + 1) + " unknown")
+                    break
+                index += 1
+            except:
+                print(
+                    "Command \n\t>'" + str(test_line) + "'\n at line " + str(index + 1) + " is not well formed!")
+                break
 
 
 def main():
@@ -215,8 +228,10 @@ def main():
         # Loads configuration file
         with open(sys.argv[1]) as configuration_file:
             conf = json.load(configuration_file)
-            test_parser = TestParser(NetemMaster(conf["nodes"]), len(conf["nodes"]),
-                                     Server("http://" + conf["testDaemon"]))
+
+            server = Server("http://" + conf["testDaemon"])
+            test_parser = TestParser(NetemMaster(conf["nodes"]), len(conf["nodes"]), server)
+
             try:
                 # loads test file
                 with open(sys.argv[2]) as f:
@@ -236,6 +251,8 @@ def main():
     except "FileNotFoundError":
         print(sys.argv[1] + " is not a valid JSON file")
         exit(1)
+    except:
+        pass
 
 
 if __name__ == "__main__":
