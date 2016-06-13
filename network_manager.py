@@ -29,24 +29,15 @@ class NetemManager:
     create_root_commands = ["sudo tc qdisc add dev %INTERFACE% root handle 1: htb"]
     delete_root_commands = ["sudo tc qdisc del dev %INTERFACE% root",
                             "sudo tc -s qdisc ls dev %INTERFACE%"]
-    create_peer_class_commands = ["sudo tc class add dev %INTERFACE% parent 1: classid 1:%SID% htb rate " + bandwidth,
-                                  "sudo tc class add dev %INTERFACE% parent 1: classid 1:%DID% htb rate " + bandwidth]
-    create_peer_qdisc_commands = ["sudo tc qdisc add dev %INTERFACE% parent 1:%SID% handle %SID%: netem delay 0ms",
-                                  "sudo tc qdisc add dev %INTERFACE% parent 1:%DID% handle %DID%: netem delay 0ms"]
+    create_peer_class_commands = ["sudo tc class add dev %INTERFACE% parent 1: classid 1:%DID% htb rate " + bandwidth]
+    create_peer_qdisc_commands = ["sudo tc qdisc add dev %INTERFACE% parent 1:%DID% handle %DID%: netem delay 0ms"]
     create_peer_filter_commands = [
-        "sudo tc filter add dev %INTERFACE% protocol ip u32 " +
-        "match ip sport %PPORT% 0xffff " +
-        "match ip src %PADDRESS%/32 " +
-        "match ip dport %HPORT% 0xffff " +
-        "match ip dst %HADDRESS%/32 " +
-        "flowid 1:%SID% ",
         "sudo tc filter add dev %INTERFACE% protocol ip u32 " +
         "match ip dport %PPORT% 0xffff " +
         "match ip dst %PADDRESS%/32 " +
         "match ip sport %HPORT% 0xffff " +
         "match ip src %HADDRESS%/32 " +
         "flowid 1:%DID%"]
-    modify_incoming_connections_commands = ["sudo tc qdisc change dev %INTERFACE% parent 1:%PID%1 netem %NETEM%"]
     modify_outgoing_connections_commands = ["sudo tc qdisc change dev %INTERFACE% parent 1:%PID%2 netem %NETEM%"]
 
     def __init__(self, interface, host, peers):
@@ -102,26 +93,22 @@ class NetemManager:
         try:
             id = str(self.host["id"])
             qid = str(peer["id"])
-            source_id = id + qid + "1"
             destination_id = id + qid + "2"
             peer_port = str(peer["port"])
             peer_address = str(peer["address"])
             err = self.run_commands(self.create_peer_class_commands, {self.interface_token: self.interface,
-                                                                      self.source_id_token: source_id,
                                                                       self.destination_id_token: destination_id})
             if err:
                 logging.error("error creating class for peer " + str(peer) + "!\n\t" + err)
                 return False
             else:
                 err = self.run_commands(self.create_peer_qdisc_commands, {self.interface_token: self.interface,
-                                                                          self.source_id_token: source_id,
                                                                           self.destination_id_token: destination_id})
                 if err:
                     logging.error("error creating qdisc for peer " + str(peer) + "!\n\t" + err)
                     return False
                 else:
                     err = self.run_commands(self.create_peer_filter_commands, {self.interface_token: self.interface,
-                                                                               self.source_id_token: source_id,
                                                                                self.destination_id_token: destination_id,
                                                                                self.peer_port_token: peer_port,
                                                                                self.peer_address_token: peer_address,
@@ -136,20 +123,6 @@ class NetemManager:
         except:
             return False
 
-    def modify_incoming_connection(self, peer_id, netem_command):
-        print("Command '"+netem_command+"'to incoming connection received")
-        try:
-            err = self.run_commands(self.modify_incoming_connections_commands, {self.interface_token: self.interface,
-                                                                                self.peer_id_token: str(
-                                                                                        self.host["id"]) + peer_id,
-                                                                                self.netem_token: netem_command})
-            if err:
-                logging.error("error modifying incoming connection from peer " + peer_id + "!\n\t" + err)
-                return False
-            else:
-                return True
-        except:
-            return False
 
     def modify_outgoing_connection(self, peer_id, netem_command):
         print("Command '"+netem_command+"' to outgoing connection received")
@@ -165,10 +138,6 @@ class NetemManager:
                 return True
         except:
             return False
-
-    def modify_connection(self, peer_id, netem_command):
-        print("Command '"+netem_command+"' received")
-        return self.modify_incoming_connection(peer_id, netem_command) and self.modify_outgoing_connection(peer_id, netem_command)
 
     def init_qdisc(self):
         print("Initializing peer qdiscs")
