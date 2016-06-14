@@ -48,7 +48,7 @@ def get_free_random_port():
 
 def is_socket_open(host, port):
     with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
-        return sock.connect_ex((host, port)) != 0  # 0 stands for error (aka socker already busy)
+        return sock.connect_ex((host, port)) == 0  # 0 -> ok (aka socker not busy)
 
 
 def get_node_config(cluster, node):
