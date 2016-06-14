@@ -8,6 +8,7 @@ from configure_daemon import CONFIGURE_DAEMON_PORT
 from provisioner import get_free_random_port
 
 # some useful constants
+RPC_PORT = 12345
 CONFIG_FILE = './masterConfig.json'
 CONSENSUS_ALGORITHM_PORT = 12348
 GCE_RETHINKDB_PORTS = {
@@ -74,5 +75,6 @@ if __name__ == '__main__':
         cluster = json.load(conf)
 
     s = createServer('localhost', RPC_PORT)
-    print(configure_rethinkdb(cluster['nodes'], 'local'))
+    #print(configure_rethinkdb(cluster['nodes'], 'local'))
     #print(s.stop_rethinkdb())
+    print(s.run_test_daemon('rethinkdb'))

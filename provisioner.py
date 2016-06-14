@@ -81,13 +81,15 @@ def configure_rethinkdb_local(cluster):
 def configure_rethinkdb_gce(cluster):
     # gce -> use GCE_PORTS since we are in different nodes and we don't have problems with ports
     rpc_server = xmlrpc.client.ServerProxy('http://{}:{}'.format(cluster[0]['address'], CONFIGURE_DAEMON_PORT))
-    print(rpc_server.configure_rethinkdb_master(GCE_RETHINKDB_PORTS['cluster_port'], GCE_RETHINKDB_PORTS['driver_port'],
+    print(rpc_server.configure_rethinkdb_master(GCE_RETHINKDB_PORTS['cluster_port'],
+                                                GCE_RETHINKDB_PORTS['driver_port'],
                                                 GCE_RETHINKDB_PORTS['http_port'],
                                                 cluster[0]['address']))
 
     for node in cluster[1:]:
         rpc_server = xmlrpc.client.ServerProxy('http://{}:{}'.format(node['address'], CONFIGURE_DAEMON_PORT))
-        print(rpc_server.configure_rethinkdb_follower(node['id'], cluster[0]['address'],
+        print(rpc_server.configure_rethinkdb_follower(node['id'], 
+                                                      cluster[0]['address'],
                                                       GCE_RETHINKDB_PORTS['cluster_port'],
                                                       GCE_RETHINKDB_PORTS['cluster_port'],
                                                       GCE_RETHINKDB_PORTS['driver_port'],
