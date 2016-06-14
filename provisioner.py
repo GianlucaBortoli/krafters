@@ -48,7 +48,7 @@ def get_free_random_port():
 
 def is_socket_open(host, port):
     with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
-        return sock.connect_ex((host, port)) == 0
+        return sock.connect_ex((host, port)) != 0  # 0 stands for error (aka socker already busy)
 
 
 def get_node_config(cluster, node):
@@ -71,11 +71,18 @@ def configure_rethinkdb_local(cluster):
     #          ports for all the others
 
     print("m{}: ".format(cluster[0]['id']), cluster[0])
-    print(configure_rethinkdb_master(master_cluster_port, cluster[0]['port'], get_free_random_port(), 'localhost'))
+    print(configure_rethinkdb_master(master_cluster_port, 
+                                     cluster[0]['port'], 
+                                     get_free_random_port(), 
+                                     'localhost'))
     for node in cluster[1:]:
         print("f{}: ".format(node['id']), node)
-        print(configure_rethinkdb_follower(node['id'], cluster[0]['address'], master_cluster_port,
-                                           get_free_random_port(), node['port'], get_free_random_port()))
+        print(configure_rethinkdb_follower(node['id'], 
+                                           cluster[0]['address'], 
+                                           master_cluster_port,
+                                           get_free_random_port(), 
+                                           node['port'], 
+                                           get_free_random_port()))
 
 
 def configure_rethinkdb_gce(cluster):
@@ -126,6 +133,7 @@ def provide_local_cluster(nodes_num, algorithm):
         subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)  # process is run asynchronously
     for node in cluster:
         while not is_socket_open(node["address"], node["rpcPort"]):  # check that Popen actually started the script
+            print("...")
             sleep(0.3)
         print("Network manager active on {}:{}".format(node["address"], str(node["rpcPort"])))
     # ✓ 3. run network managers
@@ -134,8 +142,9 @@ def provide_local_cluster(nodes_num, algorithm):
     endpoint = "127.0.0.1:" + endpoint_port  # run the test daemon on localhost
     print("Running the test daemon on {}...".format(endpoint))
     command = [sys.executable, "test_daemon.py", "127.0.0.1", algorithm]
-    subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)  # process is run asynchronously
+    subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)  # process is run asynchronously    
     while not is_socket_open("127.0.0.1", int(endpoint_port)):  # check that Popen actually started the script
+        print("...")
         sleep(0.3)
     print("Test daemon active on {}".format(endpoint))
     # ✓ 4. run test daemon

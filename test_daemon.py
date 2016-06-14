@@ -34,7 +34,8 @@ def rethinkdbSetup(host, port):
     except:
         print('Database {} already exists'.format(RETHINKDB_DB_NAME))
     finally:
-        connection.close()
+        pass
+        #connection.close()
 
 
 def rethinkdbAppendEntry(connection):
@@ -64,7 +65,7 @@ class TestManager:
 
         if algorithm == "rethinkdb":
             rethinkdbSetup('localhost', GCE_RETHINKDB_PORTS['driver_port'])
-            self.connection = r.connect('localhost', 28015)
+            self.connection = r.connect('localhost', CONSENSUS_ALGORITHM_PORT)
 
     # performs a single fundamental operation according to the selected algorithm
     def run_operation(self):
