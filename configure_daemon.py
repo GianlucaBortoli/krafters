@@ -66,7 +66,7 @@ def run_test_daemon(algorithm):
 
 def is_socket_open(host, port):
     with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
-        return sock.connect_ex((host, port)) == 0
+        return sock.connect_ex((host, port)) != 0
 
 
 def run_network_manager():
