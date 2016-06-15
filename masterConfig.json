@@ -1,31 +1,31 @@
 {
+    "mode": "gce",
     "algorithm": "rethinkdb",
     "nodes": [
         {
-            "id": 1,
-            "vmID": "vm-node-1",
-            "address": "130.211.126.48",
-            "rpcPort": 12347,
-            "port": 12348,
-            "interface": "nic0"
-        },
-        {
-            "id": 2,
-            "vmID": "vm-node-2",
             "address": "104.154.109.167",
+            "interface": "nic0",
             "rpcPort": 12347,
             "port": 12348,
-            "interface": "nic0"
+            "vmID": "vm-node-1",
+            "id": 1
         },
         {
-            "id": 3,
-            "vmID": "vm-node-3",
-            "address": "104.197.161.244",
+            "address": "130.211.126.48",
+            "interface": "nic0",
             "rpcPort": 12347,
             "port": 12348,
-            "interface": "nic0"
+            "vmID": "vm-node-2",
+            "id": 2
+        },
+        {
+            "address": "104.197.161.244",
+            "interface": "nic0",
+            "rpcPort": 12347,
+            "port": 12348,
+            "vmID": "vm-node-3",
+            "id": 3
         }
     ],
-    "mode": "gce",
-    "testDaemon": "130.211.126.48:12346"
+    "testDaemon": "104.154.109.167:12346"
 }

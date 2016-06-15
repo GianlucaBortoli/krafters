@@ -39,7 +39,7 @@ def configure_rethinkdb_master(cluster_port, driver_port, http_port, canonical_a
 
 
 def configure_rethinkdb_follower(my_id, m_ip, m_cp, my_cp, my_dp, my_hp):
-    cmd = ("rethinkdb --bind-all --directory rethinkdb_data{id} " 
+    cmd = ("rethinkdb --bind all --directory rethinkdb_data{id} " 
             "--join {ip}:{m_cp} --cluster-port {my_cp} "
             "--driver-port {my_dp} --http-port {my_hp} &").\
         format(id=my_id, ip=m_ip, m_cp=m_cp, my_cp=my_cp, my_dp=my_dp, my_hp=my_hp)
