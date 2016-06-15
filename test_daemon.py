@@ -3,6 +3,7 @@
 # Listen for test_executor
 # argv[1] = IP address of the machine running this script (where the test daemon will be started)
 # argv[2] = consensus algorithm
+# argv[3] = the driver port for rethinkdb if needed
 
 from xmlrpc.server import SimpleXMLRPCServer
 import sys
@@ -59,13 +60,16 @@ def paxosAppendEntry():
 
 # class used to implement different append requests for different algorithms
 class TestManager:
-    def __init__(self, algorithm):
+    def __init__(self, algorithm, driver_port):
         self.algorithm = algorithm
+        self.driver_port = driver_port
         self.connection = None
 
         if algorithm == "rethinkdb":
+            print("Running setup")
             rethinkdbSetup('localhost', GCE_RETHINKDB_PORTS['driver_port'])
-            self.connection = r.connect('localhost', CONSENSUS_ALGORITHM_PORT)
+            print("Setup done, creating connection..")
+            self.connection = r.connect('localhost', driver_port)
 
     # performs a single fundamental operation according to the selected algorithm
     def run_operation(self):
@@ -98,7 +102,10 @@ class TestManager:
 def main():
     server = SimpleXMLRPCServer((sys.argv[1], TEST_DAEMON_PORT))
     # instantiate the test class
-    test_manager = TestManager(sys.argv[2])
+    if len(sys.argv) == 4: # I received also the 3rd argument (aka driver port)
+        test_manager = TestManager(sys.argv[2], sys.argv[3])
+    else:
+        test_manager = TestManager(sys.argv[2], 0)
     # serve the run method
     server.register_function(test_manager.run, "run")
     # and serve forever

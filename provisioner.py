@@ -13,7 +13,7 @@ from googleapiclient import discovery
 from googleapiclient import http
 from test_daemon import TEST_DAEMON_PORT
 from configure_daemon import CONFIGURE_DAEMON_PORT, NETWORK_MANAGER_PORT, \
-    configure_rethinkdb_master, configure_rethinkdb_follower
+    configure_rethinkdb_master, configure_rethinkdb_follower, run_test_daemon
 from xmlrpc.client import ServerProxy as rpcClient
 
 MAX_CLUSTER_NODES = 8  # CPU-quota on GCE
@@ -133,7 +133,7 @@ def provide_local_cluster(nodes_num, algorithm):
         subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)  # process is run asynchronously
     for node in cluster:
         while not is_socket_open(node["address"], node["rpcPort"]):  # check that Popen actually started the script
-            print("...")
+            #print("...")
             sleep(0.3)
         print("Network manager active on {}:{}".format(node["address"], str(node["rpcPort"])))
     # ✓ 3. run network managers
@@ -141,11 +141,10 @@ def provide_local_cluster(nodes_num, algorithm):
     endpoint_port = str(TEST_DAEMON_PORT)
     endpoint = "127.0.0.1:" + endpoint_port  # run the test daemon on localhost
     print("Running the test daemon on {}...".format(endpoint))
-    command = [sys.executable, "test_daemon.py", "127.0.0.1", algorithm]
-    subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)  # process is run asynchronously    
-    while not is_socket_open("127.0.0.1", int(endpoint_port)):  # check that Popen actually started the script
-        print("...")
-        sleep(0.3)
+    sleep(10)
+    if not run_test_daemon(algorithm, cluster[0]['port']):
+        print("Test daemon not started. Exiting...")
+        exit(1)
     print("Test daemon active on {}".format(endpoint))
     # ✓ 4. run test daemon
 
@@ -343,6 +342,7 @@ def provide_gce_cluster(nodes_num, algorithm):
     retries = 0
     while True:
         try:
+            sleep(10)
             configure_daemons[0].run_test_daemon(algorithm)
             break
         except Exception as e:

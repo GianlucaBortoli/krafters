@@ -1,28 +1,14 @@
 {
-    "testDaemon": "127.0.0.1:12346",
-    "mode": "local",
     "algorithm": "rethinkdb",
+    "mode": "local",
+    "testDaemon": "127.0.0.1:12346",
     "nodes": [
         {
             "id": 1,
-            "port": 57879,
-            "rpcPort": 41340,
+            "rpcPort": 33264,
             "address": "127.0.0.1",
-            "interface": "lo"
-        },
-        {
-            "id": 2,
-            "port": 59918,
-            "rpcPort": 34126,
-            "address": "127.0.0.1",
-            "interface": "lo"
-        },
-        {
-            "id": 3,
-            "port": 49175,
-            "rpcPort": 41862,
-            "address": "127.0.0.1",
-            "interface": "lo"
+            "interface": "lo",
+            "port": 52847
         }
     ]
 }
