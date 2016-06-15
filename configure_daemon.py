@@ -55,11 +55,16 @@ def stop_rethinkdb():
 
 
 def run_test_daemon(algorithm):
-    cmd = "sudo ./test_daemon.py '' {} &".format(algorithm)
+    filePath = os.path.dirname(os.path.abspath(__file__)).replace(" ", "\ ")
+    #print(filePath)
+    cmd = "sudo python3.4 {}/test_daemon.py '' {} &".format(filePath, algorithm)
+    print("cmd = ", cmd)
     p = sb.Popen(cmd, shell=True, stdout=DEVNULL)  # process is run asynchronously
     p.communicate()
-    while not is_socket_open("127.0.0.1", TEST_DAEMON_PORT):  # check that Popen actually started the script
-        sleep(0.3)
+    #while not is_socket_open("127.0.0.1", TEST_DAEMON_PORT):  # check that Popen actually started the script
+    #    print(is_socket_open("127.0.0.1", TEST_DAEMON_PORT))
+    #    sleep(0.3)
+    sleep(10)
     print("Test daemon started")
     return True
 
