@@ -66,9 +66,7 @@ class TestManager:
         self.connection = None
 
         if algorithm == "rethinkdb":
-            print("Running setup")
             rethinkdbSetup('localhost', GCE_RETHINKDB_PORTS['driver_port'])
-            print("Setup done, creating connection..")
             self.connection = r.connect('localhost', driver_port)
 
     # performs a single fundamental operation according to the selected algorithm

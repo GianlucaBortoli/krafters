@@ -133,7 +133,6 @@ def provide_local_cluster(nodes_num, algorithm):
         subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)  # process is run asynchronously
     for node in cluster:
         while not is_socket_open(node["address"], node["rpcPort"]):  # check that Popen actually started the script
-            #print("...")
             sleep(0.3)
         print("Network manager active on {}:{}".format(node["address"], str(node["rpcPort"])))
     # ✓ 3. run network managers
@@ -343,7 +342,7 @@ def provide_gce_cluster(nodes_num, algorithm):
     while True:
         try:
             sleep(10)
-            configure_daemons[0].run_test_daemon(algorithm)
+            configure_daemons[0].run_test_daemon(algorithm, cluster[0]['port'])
             break
         except Exception as e:
             print(e)
