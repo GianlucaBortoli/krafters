@@ -2,10 +2,10 @@
 
 # Built only to test configure_daemon functionalities on localhost
 
-import xmlrpc.client
-import json
 from configure_daemon import CONFIGURE_DAEMON_PORT
 from provisioner import get_free_random_port
+import xmlrpc.client
+import json
 
 # some useful constants
 RPC_PORT = 12345

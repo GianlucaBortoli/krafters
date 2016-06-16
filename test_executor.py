@@ -4,11 +4,11 @@
 # argv[2] = test file
 # argv[3] (optional) = output file
 
+from xmlrpc.client import ServerProxy as Server
 import json
 import logging
 import random
 import sys
-from xmlrpc.client import ServerProxy as Server
 import re
 import csv
 

@@ -1,13 +1,7 @@
 #!/usr/bin/python3.4
 
-import argparse
-import json
-import socket
 from time import sleep
-import subprocess
-import sys
 from contextlib import closing
-import xmlrpc
 from oauth2client.client import GoogleCredentials
 from googleapiclient import discovery
 from googleapiclient import http
@@ -15,6 +9,12 @@ from test_daemon import TEST_DAEMON_PORT
 from configure_daemon import CONFIGURE_DAEMON_PORT, NETWORK_MANAGER_PORT, \
     configure_rethinkdb_master, configure_rethinkdb_follower, run_test_daemon
 from xmlrpc.client import ServerProxy as rpcClient
+import argparse
+import json
+import socket
+import subprocess
+import sys
+import xmlrpc
 
 MAX_CLUSTER_NODES = 8  # CPU-quota on GCE
 CLUSTER_MODES = ["local", "gce"]

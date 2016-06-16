@@ -1,12 +1,14 @@
 #!/usr/bin/python3.4
 
-import json
-import sys
-import subprocess
 from time import sleep
 from oauth2client.client import GoogleCredentials
 from googleapiclient import discovery
 from provisioner import GCP_PROJECT_ID, GCE_ZONE_ID
+import json
+import sys
+import subprocess
+import shutil
+import os
 
 
 # TODO: clean GCS node-config file, dangling GCS startup script ACKs, destroy rethinkdb cluster
@@ -24,6 +26,12 @@ def tear_down_local_cluster(conf):
         kill_process_by_port(node["rpcPort"])
     print("Shutting down process for test daemon running at {}".format(conf["testDaemon"]))
     kill_process_by_port(conf["testDaemon"].split(":")[1])
+    print("Removing local directories (if any)")
+    fileList = []
+    for file in os.listdir('.'):
+        if 'rethinkdb_data' in file:
+            print("\tDeleting '{}' ...".format(file))
+            shutil.rmtree('./{}'.format(file))
     print("Cluster torn down correctly. Bye!")
 
 

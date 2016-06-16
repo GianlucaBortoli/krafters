@@ -6,9 +6,9 @@
 # argv[3] = the driver port for rethinkdb if needed
 
 from xmlrpc.server import SimpleXMLRPCServer
+import rethinkdb as r
 import sys
 import time
-import rethinkdb as r
 import logging
 
 # NOTE DO NOT ADD EXTERNAL DEPENDENCIES: THIS SCRIPT HAS TO BE EXECUTED IN A STANDALONE WAY ON VM STARTUP
@@ -38,8 +38,7 @@ def rethinkdbSetup(host, port):
     except:
         logging.error('Database {} already exists'.format(RETHINKDB_DB_NAME))
     finally:
-        pass
-        #connection.close()
+        connection.close()
 
 
 def rethinkdbAppendEntry(connection):
@@ -70,9 +69,7 @@ class TestManager:
 
         if algorithm == "rethinkdb":
             rethinkdbSetup('localhost', driver_port)
-
-
-
+            self.connection = r.connect('localhost', self.driver_port)
 
     # performs a single fundamental operation according to the selected algorithm
     def run_operation(self):
@@ -90,17 +87,13 @@ class TestManager:
     def run(self, times):
         results = []
 
-        self.connection = r.connect('localhost', self.driver_port)
-
         for _ in range(0, times):
             t = time.perf_counter()
             self.run_operation()
             results.append(time.perf_counter() - t)
+
         # close rethinkdb connection
-
-        self.connection.close()
-
-
+        #self.connection.close()
         return results
 
 

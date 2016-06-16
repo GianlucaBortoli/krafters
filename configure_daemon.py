@@ -10,13 +10,12 @@
 # pso:          < nothing to do here >
 
 from contextlib import closing
-import socket
-
-import subprocess as sb
-import os
-import sys
 from time import sleep
 from xmlrpc.server import SimpleXMLRPCServer
+import subprocess as sb
+import socket
+import os
+import sys
 
 # NOTE DO NOT ADD EXTERNAL DEPENDENCIES: THIS SCRIPT HAS TO BE EXECUTED IN A STANDALONE WAY ON VM STARTUP
 
@@ -60,14 +59,14 @@ def run_test_daemon(algorithm, driver_port):
     if algorithm == "rethinkdb":
         # call test_daemon with driver_port, since we need it to create the connection
         # to perform the appendEntry
-        cmd = "sudo python3.4 {}/test_daemon.py '' {} {} &".format(filePath,
-                                                                   algorithm,
-                                                                   driver_port)
+        cmd = "python3.4 {}/test_daemon.py '' {} {} &".format(filePath,
+                                                              algorithm,
+                                                              driver_port)
     else:
         # no need for driver_port, just do not pass it. test_daemon will check for argv
         # length when called
-        cmd = "sudo python3.4 {}/test_daemon.py '' {} &".format(filePath,
-                                                                algorithm)
+        cmd = "python3.4 {}/test_daemon.py '' {} &".format(filePath,
+                                                           algorithm)
     p = sb.Popen(cmd, shell=True, stdout=DEVNULL)  # process is run in background
     p.communicate()
     sleep(10)
