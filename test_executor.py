@@ -37,7 +37,7 @@ class NetemMaster:
             print("modify connection from " + str(source) + " to " + str(
                     target) + " '" + netem_command + "' bidirectional")
             if not self.nodes_rpc[str(source)].modify_outgoing_connection(str(target), netem_command) or not \
-            self.nodes_rpc[str(target)].modify_outgoing_connection(str(source), netem_command):
+                    self.nodes_rpc[str(target)].modify_outgoing_connection(str(source), netem_command):
                 print("Error while modifying network!")
                 sys.exit(1)
         else:
@@ -143,7 +143,7 @@ class TestParser:
                     random_values_count += 1
                 elif values[i] == "all":
                     del values[i]
-                    for j in range(1, self.nodes_number):
+                    for j in range(1, self.nodes_number+1):
                         ids[key].append(str(j))
                 elif not values[i].isdigit():
                     print("unknown id '" + values[i] + "' : it will be removed")
@@ -254,7 +254,7 @@ def main():
                     test_file = f.readlines()
                 output_file_path = sys.argv[2] + ".csv"
                 # if 3rd argument is specified, it is used as output file path
-                if sys.argv[3]:
+                if len(sys.argv) > 3:
                     output_file_path = sys.argv[3]
 
                 # sets output csv file path

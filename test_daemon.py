@@ -9,6 +9,7 @@ from xmlrpc.server import SimpleXMLRPCServer
 import sys
 import time
 import rethinkdb as r
+import logging
 
 # NOTE DO NOT ADD EXTERNAL DEPENDENCIES: THIS SCRIPT HAS TO BE EXECUTED IN A STANDALONE WAY ON VM STARTUP
 
@@ -29,11 +30,13 @@ GCE_RETHINKDB_PORTS = {
 def rethinkdbSetup(host, port):
     try:
         connection = r.connect(host, port)
-        r.db_create(RETHINKDB_DB_NAME).run(connection)
+        logging.info("Connection with rethinkdb successful")
+        # r.db_create(RETHINKDB_DB_NAME).run(connection)
+        logging.info("Database {} created".format(RETHINKDB_DB_NAME))
         r.db(RETHINKDB_DB_NAME).table_create(RETHINKDB_TABLE_NAME).run(connection)
-        print('Db {} and table {} created successfully'.format(RETHINKDB_DB_NAME, RETHINKDB_TABLE_NAME))
+        logging.info('Db {} and table {} created successfully'.format(RETHINKDB_DB_NAME, RETHINKDB_TABLE_NAME))
     except:
-        print('Database {} already exists'.format(RETHINKDB_DB_NAME))
+        logging.error('Database {} already exists'.format(RETHINKDB_DB_NAME))
     finally:
         pass
         #connection.close()
@@ -43,9 +46,9 @@ def rethinkdbAppendEntry(connection):
     value = {'key': 'value'}
     try:
         r.table(RETHINKDB_TABLE_NAME).insert(value, conflict='replace').run(connection)
-        print('key added')
+        logging.info('key added')
     except:
-        print('{} not added'.format(value))
+        logging.error('{} not added'.format(value))
 
 
 def psoAppendEntry():
@@ -67,7 +70,9 @@ class TestManager:
 
         if algorithm == "rethinkdb":
             rethinkdbSetup('localhost', driver_port)
-            self.connection = r.connect('localhost', driver_port)
+
+
+
 
     # performs a single fundamental operation according to the selected algorithm
     def run_operation(self):
@@ -78,26 +83,29 @@ class TestManager:
         elif self.algorithm == "paxos":
             paxosAppendEntry()
         else:
-            print('Algorithm {} not recognized'.format(self.algorithm))
+            logging.error('Algorithm {} not recognized'.format(self.algorithm))
             sys.exit()
 
     # wrapper used to execute multiple operations and register times
     def run(self, times):
         results = []
+
+        self.connection = r.connect('localhost', self.driver_port)
+
         for _ in range(0, times):
             t0 = time.clock()
             self.run_operation()
             results.append(time.clock() - t0)
         # close rethinkdb connection
-        try:
-            self.connection.close()
-        except:
-            pass
+
+        self.connection.close()
+
 
         return results
 
 
 def main():
+    logging.basicConfig(filename='test_daemon_debug.log', level=logging.DEBUG)
     server = SimpleXMLRPCServer((sys.argv[1], TEST_DAEMON_PORT))
 
     # instantiate the test class
