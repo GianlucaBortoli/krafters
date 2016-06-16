@@ -1,42 +1,28 @@
 {
-    "mode": "local",
     "testDaemon": "127.0.0.1:12346",
-    "algorithm": "rethinkdb",
     "nodes": [
         {
-            "port": 45555,
+            "address": "127.0.0.1",
             "id": 1,
+            "port": 46645,
             "interface": "lo",
-            "rpcPort": 48788,
-            "address": "127.0.0.1"
+            "rpcPort": 36558
         },
         {
-            "port": 57262,
+            "address": "127.0.0.1",
             "id": 2,
+            "port": 49645,
             "interface": "lo",
-            "rpcPort": 58692,
-            "address": "127.0.0.1"
+            "rpcPort": 33636
         },
         {
-            "port": 49819,
+            "address": "127.0.0.1",
             "id": 3,
+            "port": 37534,
             "interface": "lo",
-            "rpcPort": 36844,
-            "address": "127.0.0.1"
-        },
-        {
-            "port": 34165,
-            "id": 4,
-            "interface": "lo",
-            "rpcPort": 58537,
-            "address": "127.0.0.1"
-        },
-        {
-            "port": 44863,
-            "id": 5,
-            "interface": "lo",
-            "rpcPort": 47078,
-            "address": "127.0.0.1"
+            "rpcPort": 55837
         }
-    ]
+    ],
+    "algorithm": "rethinkdb",
+    "mode": "local"
 }

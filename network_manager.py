@@ -35,7 +35,6 @@ class NetemManager:
         "sudo tc filter add dev %INTERFACE% protocol ip u32 " +
         "match ip dport %PPORT% 0xffff " +
         "match ip dst %PADDRESS%/32 " +
-        "match ip sport %HPORT% 0xffff " +
         "match ip src %HADDRESS%/32 " +
         "flowid 1:%DID%"]
     modify_outgoing_connections_commands = ["sudo tc qdisc change dev %INTERFACE% parent 1:%PID%2 netem %NETEM%"]
@@ -112,7 +111,6 @@ class NetemManager:
                                                                                self.destination_id_token: destination_id,
                                                                                self.peer_port_token: peer_port,
                                                                                self.peer_address_token: peer_address,
-                                                                               self.host_port_token: str(self.host["port"]),
                                                                                self.host_address_token: str(
                                                                                        self.host["address"])})
                     if err:
