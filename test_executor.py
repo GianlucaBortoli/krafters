@@ -110,7 +110,7 @@ class TestParser:
     # resets every connection, related to reset command
     def reset(self):
         for i in range(1, self.nodes_number+1):
-            for j in range(i, self.nodes_number):
+            for j in range(i, self.nodes_number+1):
                 self.netem_master.modify_connection(i, j, " delay 0ms", True)
 
     # resolve "rand" and "all" keywords in commands
