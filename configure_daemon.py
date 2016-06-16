@@ -56,9 +56,18 @@ def stop_rethinkdb():
 
 def run_test_daemon(algorithm, driver_port):
     filePath = os.path.dirname(os.path.abspath(__file__)).replace(" ", "\ ")
-    cmd = "sudo python3.4 {}/test_daemon.py '' {} {} &".format(filePath, 
-                                                               algorithm, 
-                                                               driver_port)
+
+    if algorithm == "rethinkdb":
+        # call test_daemon with driver_port, since we need it to create the connection
+        # to perform the appendEntry
+        cmd = "sudo python3.4 {}/test_daemon.py '' {} {} &".format(filePath,
+                                                                   algorithm,
+                                                                   driver_port)
+    else:
+        # no need for driver_port, just do not pass it. test_daemon will check for argv
+        # length when called
+        cmd = "sudo python3.4 {}/test_daemon.py '' {} &".format(filePath,
+                                                                algorithm)
     p = sb.Popen(cmd, shell=True, stdout=DEVNULL)  # process is run in background
     p.communicate()
     sleep(10)

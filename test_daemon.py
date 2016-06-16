@@ -66,7 +66,7 @@ class TestManager:
         self.connection = None
 
         if algorithm == "rethinkdb":
-            rethinkdbSetup('localhost', GCE_RETHINKDB_PORTS['driver_port'])
+            rethinkdbSetup('localhost', driver_port)
             self.connection = r.connect('localhost', driver_port)
 
     # performs a single fundamental operation according to the selected algorithm
@@ -99,11 +99,16 @@ class TestManager:
 
 def main():
     server = SimpleXMLRPCServer((sys.argv[1], TEST_DAEMON_PORT))
+
     # instantiate the test class
-    if len(sys.argv) == 4: # I received also the 3rd argument (aka driver port)
+    if len(sys.argv) == 4:
+        # I received also the 3rd argument (aka driver port) only if this is called
+        # by rethinkdb
         test_manager = TestManager(sys.argv[2], sys.argv[3])
     else:
+        # o.w. pso/paxos called it, so driver port is set but completely useless
         test_manager = TestManager(sys.argv[2], 0)
+
     # serve the run method
     server.register_function(test_manager.run, "run")
     # and serve forever

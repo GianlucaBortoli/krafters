@@ -1,31 +1,42 @@
 {
-    "mode": "gce",
+    "mode": "local",
+    "testDaemon": "127.0.0.1:12346",
     "algorithm": "rethinkdb",
     "nodes": [
         {
-            "address": "104.154.109.167",
-            "interface": "nic0",
-            "rpcPort": 12347,
-            "port": 12348,
-            "vmID": "vm-node-1",
-            "id": 1
+            "port": 45555,
+            "id": 1,
+            "interface": "lo",
+            "rpcPort": 48788,
+            "address": "127.0.0.1"
         },
         {
-            "address": "130.211.126.48",
-            "interface": "nic0",
-            "rpcPort": 12347,
-            "port": 12348,
-            "vmID": "vm-node-2",
-            "id": 2
+            "port": 57262,
+            "id": 2,
+            "interface": "lo",
+            "rpcPort": 58692,
+            "address": "127.0.0.1"
         },
         {
-            "address": "104.197.161.244",
-            "interface": "nic0",
-            "rpcPort": 12347,
-            "port": 12348,
-            "vmID": "vm-node-3",
-            "id": 3
+            "port": 49819,
+            "id": 3,
+            "interface": "lo",
+            "rpcPort": 36844,
+            "address": "127.0.0.1"
+        },
+        {
+            "port": 34165,
+            "id": 4,
+            "interface": "lo",
+            "rpcPort": 58537,
+            "address": "127.0.0.1"
+        },
+        {
+            "port": 44863,
+            "id": 5,
+            "interface": "lo",
+            "rpcPort": 47078,
+            "address": "127.0.0.1"
         }
-    ],
-    "testDaemon": "104.154.109.167:12346"
+    ]
 }
