@@ -67,3 +67,4 @@ debug.log
 
 # tmp data
 *.swp
+*.csv
