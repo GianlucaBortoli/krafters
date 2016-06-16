@@ -93,9 +93,9 @@ class TestManager:
         self.connection = r.connect('localhost', self.driver_port)
 
         for _ in range(0, times):
-            t0 = time.clock()
+            t = time.perf_counter()
             self.run_operation()
-            results.append(time.clock() - t0)
+            results.append(time.perf_counter() - t)
         # close rethinkdb connection
 
         self.connection.close()
