@@ -106,7 +106,7 @@ def provide_gce_cluster(nodes_num, algorithm):
     config_file_template = "provision_node_{}_config.json"
     zone_operations, vm_ids, cluster = [], [], []
     for i in range(1, nodes_num + 1):
-        vm_ids.append("vm-node-{}-{}".format(i, get_random_string(4)))
+        vm_ids.append("vm-node-{}-{}".format(i, get_random_string(6)))
         metadata = {"bucket": GCS_BUCKET,
                     "clusterConfig": config_dir + config_file_template.format(vm_ids[-1]),
                     "myid": vm_ids[-1]}

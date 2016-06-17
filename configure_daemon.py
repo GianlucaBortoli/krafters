@@ -49,9 +49,7 @@ def run_network_manager():
     bucket = out.decode("utf-8")
     print("GCS bucket: {}".format(bucket))
     command = ["sudo", "gsutil", "cp", "gs://{}/{}".format(bucket, gcs_node_conf_file), LOCAL_NODE_CONF_FILE]
-    out, err = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
-    print(out)
-    print(err)
+    subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
     print("GCS file download completed")
     command = ["sudo", "./network_manager.py", LOCAL_NODE_CONF_FILE]
     subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)  # process is run asynchronously

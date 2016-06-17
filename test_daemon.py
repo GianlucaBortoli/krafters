@@ -28,8 +28,8 @@ GCE_RETHINKDB_PORTS = {
 
 
 def rethinkdbSetup(host, port):
+    connection = r.connect(host, port)
     try:
-        connection = r.connect(host, port)
         logging.info("Connection with rethinkdb successful")
         # r.db_create(RETHINKDB_DB_NAME).run(connection)
         logging.info("Database {} created".format(RETHINKDB_DB_NAME))
@@ -86,14 +86,10 @@ class TestManager:
     # wrapper used to execute multiple operations and register times
     def run(self, times):
         results = []
-
         for _ in range(0, times):
             t = time.perf_counter()
             self.run_operation()
             results.append(time.perf_counter() - t)
-
-        # close rethinkdb connection
-        #self.connection.close()
         return results
 
 
