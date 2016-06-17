@@ -20,16 +20,9 @@ DEVNULL = open(os.devnull, 'wb')
 LOCAL_NODE_CONF_FILE = "node_conf.json"
 
 
-def run_test_daemon(algorithm, driver_port):
+def run_test_daemon(algorithm, algorithm_port):
     file_path = os.path.dirname(os.path.abspath(__file__)).replace(" ", "\ ")
-    if algorithm == "rethinkdb":
-        # call test_daemon with driver_port, since we need it to create the connection
-        # to perform the appendEntry
-        cmd = "python3.4 {}/test_daemon.py '' {} {} &".format(file_path, algorithm, driver_port)
-    else:
-        # no need for driver_port, just do not pass it. test_daemon will check for argv
-        # length when called
-        cmd = "python3.4 {}/test_daemon.py '' {} &".format(file_path, algorithm)
+    cmd = "python3.4 {}/test_daemon.py '' {} {} &".format(file_path, algorithm, algorithm_port)
     subprocess.Popen(cmd, shell=True, stdout=DEVNULL).communicate()  # process is run in background
     wait_for_ports([TEST_DAEMON_PORT], 0.5)
     print("Test daemon process started")
