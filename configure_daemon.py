@@ -103,7 +103,7 @@ def wait_for_ports(ports_to_check, timeout):
 
 def main():
     try:
-        server = SimpleXMLRPCServer(("", CONFIGURE_DAEMON_PORT))
+        server = SimpleXMLRPCServer(("", CONFIGURE_DAEMON_PORT), allow_none=True)
         print("Configure daemon listening on port {}...".format(CONFIGURE_DAEMON_PORT))
         # register all exposed functions
         server.register_function(run_test_daemon, "run_test_daemon")

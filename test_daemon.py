@@ -99,7 +99,7 @@ class TestManager:
 
 def main():
     logging.basicConfig(filename='test_daemon_debug.log', level=logging.DEBUG)
-    server = SimpleXMLRPCServer((sys.argv[1], TEST_DAEMON_PORT))
+    server = SimpleXMLRPCServer((sys.argv[1], TEST_DAEMON_PORT), allow_none=True)
 
     # instantiate the test class
     if len(sys.argv) == 4:
