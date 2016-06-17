@@ -3,7 +3,7 @@
 # argv[1] = masterConfig.json
 # argv[2] = test file
 # argv[3] (optional) = output file
-
+from functools import partial
 from xmlrpc.client import ServerProxy as Server
 import json
 import logging
@@ -12,6 +12,41 @@ import sys
 import re
 import csv
 
+
+SYNTAX_ERROR = "Syntax Error"
+ID_ERROR = "Id Error"
+LOCAL_EXECUTION_ERROR = "Local Execution Error"
+NETEM_ERROR = "Netem Error"
+
+class TestException(Exception):
+    line = -1
+    message = "undefined"
+    type = "undefined"
+
+    def __init__(self, type, message, line=-1):
+        self.line = line
+        self.message = message
+        self.type = type
+
+    def set_line(self, line):
+        self.line = line
+
+    def is_line_defined(self):
+        return self.line > 0
+
+    def __str__(self):
+        return "------->Line {}:\n\t[{}] {}\n".format(self.line, self.type, self.message)
+
+
+def attach_line(fun, line):
+    if fun:
+        try:
+            #return partial(attach_line, fun(), line)
+            return fun()
+        except TestException as e:
+            if not e.is_line_defined():
+                e.set_line(line)
+                raise e
 
 # class used to handle netem underlying network
 class NetemMaster:
@@ -28,23 +63,21 @@ class NetemMaster:
                 print("Error initializing qdiscs")
                 sys.exit(1)
 
-    # modify connection to source to target using netem_command
+    # modify connection from source to target using netem_command
     def modify_connection(self, source, target, netem_command, bidirectional=False):
 
         if str(source) == str(target):
             return
         if bidirectional:
-            print("modify connection from " + str(source) + " to " + str(
+            print("Modify connection from " + str(source) + " to " + str(
                     target) + " '" + netem_command + "' bidirectional")
             if not self.nodes_rpc[str(source)].modify_outgoing_connection(str(target), netem_command) or not \
                     self.nodes_rpc[str(target)].modify_outgoing_connection(str(source), netem_command):
-                print("Error while modifying network!")
-                sys.exit(1)
+                raise TestException(NETEM_ERROR, "'{}' is not a valid netem command".format(netem_command))
         else:
-            print("modify connection from " + str(source) + " to " + str(target) + " '" + netem_command + "'")
+            print("Modify connection from " + str(source) + " to " + str(target) + " '" + netem_command + "'")
             if not self.nodes_rpc[str(source)].modify_outgoing_connection(str(target), netem_command):
-                print("Error while modifying network!")
-                sys.exit(1)
+                raise TestException(NETEM_ERROR, "'{}' is not a valid netem command".format(netem_command))
 
     # apply netem_command to multiple commands
     def modify_connections(self, sources, targets, netem_command, bidirectional=False):
@@ -53,35 +86,113 @@ class NetemMaster:
                 self.modify_connection(source, target, netem_command, bidirectional)
 
 
-class TestParser:
-    # pattern matching for commands
-    modify_link_pattern = re.compile(
-            " *from +(all +|(([0-9]+|rand) +)+)to +(all +|(([0-9]+|rand) +)+)(bidirectional +)?set +[a-z]+.*")
-    modify_random_link_pattern = re.compile(" *on +[0-9]+ +connections? +(bidirectional +)?set +[a-z]+.*")
-    reset_pattern = re.compile(" *reset *")
-    run_pattern = re.compile(" *run +[0-9]+ *")
-    do_pattern = re.compile(" *do *")
-    times_pattern = re.compile(" *[0-9]+ +times? *")
+class CommandChecker:
+    nodes_number = -1
+    executor = {}
+    local_execution = False
 
-    netem_master = {}
-    test_daemon = {}
-    nodes_number = 0
-    csv_writer = {}
-
-    def __init__(self, netem_master, nodes_number, test_daemon):
-        self.netem_master = netem_master
+    def __init__(self, nodes_number, executor, local_execution=False):
         self.nodes_number = nodes_number
+        self.executor = executor
+        self.local_execution = local_execution
+
+    def run_command(self, n_op):
+        # no bound in operation number
+        return partial(self.executor.run_command, n_op)
+
+    #checks if ids are valid
+    def modify_link_from_to(self, sources, targets, netem_command, bidirectional):
+        sources, targets = self.resolve_ids(sources, targets)
+        # if it's a local execution checks if the parameters are compatible
+        if self.local_execution and (len(sources) < self.nodes_number-1 or (bidirectional and targets < self.nodes_number-1)):
+            # if not raises an exception
+            raise TestException(LOCAL_EXECUTION_ERROR, "unable to specify single sources in local commands")
+        return partial(self.executor.modify_link_from_to, sources, targets, netem_command, bidirectional)
+
+    # generates random id for links
+    def modify_random_link(self, connection_number, netem_command, bidirectional):
+        selected = set()
+        n_selected = 0
+        sources = set()
+        targets = set()
+        while n_selected < connection_number:
+            source = random.randrange(0, self.nodes_number) + 1
+            target = source
+            while target == source:
+                target = random.randrange(0, self.nodes_number) + 1
+            if not str(source) + "-" + str(target) in selected:
+                sources.add(source)
+                targets.add(target)
+                if bidirectional:
+                    selected.add(str(target) + "-" + str(source))
+                selected.add(str(source) + "-" + str(target))
+                n_selected += 1
+        return self.modify_link_from_to(list(sources), list(targets), netem_command, bidirectional)
+
+    # resets every connection, related to reset command
+    def reset(self):
+        return partial(self.modify_link_from_to(["all"], ["all"], "delay 0ms", False))
+
+    # resolve "all" and "rand" using given random_values
+    def resolve(self, ids, random_values):
+        result = set()
+        for value in ids:
+            if value.isdigit():
+                integer = int(value)
+                if integer > self.nodes_number:
+                    raise TestException(ID_ERROR,"Id {} out of range ".format(str(value)))
+                result.add(integer)
+            elif value == "rand":
+                result.add(random_values.pop(0))
+            elif value == "all":
+                for i in range(1, self.nodes_number+1):
+                    result.add(i)
+            else:
+                raise TestException(ID_ERROR, "Id {} is not valid".format(str(value)))
+        return result
+
+    def resolve_ids(self, sources, targets):
+        referred_ids = set()
+        random_values_count = 0
+        random_values = []
+
+        # checks which id has been used
+        for value in sources+targets:
+            if value.isdigit():
+                integer = int(value)
+                referred_ids.add(integer)
+            if value == "rand":
+                random_values_count += 1
+
+        if len(referred_ids)+random_values_count > self.nodes_number:
+            raise TestException(ID_ERROR,"'Rand' keyword has been used too many times!")
+
+        # generates random numbers to resolve "rand"
+        while random_values_count > 0:
+            ran = random.randrange(self.nodes_number) + 1
+            if ran not in referred_ids:
+                referred_ids.add(ran)
+                random_values.append(ran)
+                random_values_count -= 1
+
+        # replaces "rand" and "all" in sources
+        r_sources = self.resolve(sources, random_values)
+
+        # replaces "rand" and "all" in targets
+        r_targets = self.resolve(targets, random_values)
+
+        return r_sources, r_targets
+
+
+class Executor:
+    test_daemon = {}
+    csv_writer = {}
+    netem_master = {}
+
+    def __init__(self, test_daemon, netem_master, csv_file_path):
         self.test_daemon = test_daemon
-
-    # returns first number of a line, used for n times command
-    def get_times(self, test_line):
-        tokens = test_line.split()
-        times = int(tokens[0])
-        return times
-
-    # sets output file path
-    def set_output_path(self, output_path):
-        self.csv_writer = csv.writer(open(output_path, 'w', newline=''))
+        self.csv_writer = csv.writer(open(csv_file_path, 'w', newline=''))
+        self.netem_master = netem_master
 
     # calls run function on test_daemon and saves results to csv
     def run_command(self, n_op):
@@ -91,66 +202,28 @@ class TestParser:
     def modify_link_from_to(self, sources, targets, netem_command, bidirectional):
         self.netem_master.modify_connections(sources, targets, netem_command, bidirectional)
 
-    # generates random id and change rules
-    def modify_random_link(self, connection_number, netem_command, bidirectional):
-        selected = set()
-        n_selected = 0
-        while n_selected < connection_number:
-            source = random.randrange(0, self.nodes_number) + 1
-            target = source
-            while target == source:
-                target = random.randrange(0, self.nodes_number) + 1
-            if not str(source) + "-" + str(target) in selected:
-                self.netem_master.modify_connection(source, target, netem_command, bidirectional)
-                if bidirectional:
-                    selected.add(str(target) + "-" + str(source))
-                selected.add(str(source) + "-" + str(target))
-                n_selected += 1
 
-    # resets every connection, related to reset command
-    def reset(self):
-        for i in range(1, self.nodes_number+1):
-            for j in range(i, self.nodes_number+1):
-                self.netem_master.modify_connection(i, j, " delay 0ms", True)
 
-    # resolve "rand" and "all" keywords in commands
-    def resolve_ids(self, ids):
-        referred_ids = set()
-        random_values_count = 0
-        random_values = []
-        for key, values in ids.items():
-            for value in values:
-                if value.isdigit():
-                    digit = int(value)
-                    if digit > self.nodes_number:
-                        raise
-                    referred_ids.add(digit)
-                if value == "rand":
-                    random_values_count += 1
-        while random_values_count > 0:
-            ran = random.randrange(self.nodes_number) + 1
-            if ran not in referred_ids:
-                referred_ids.add(ran)
-                random_values.append(ran)
-                random_values_count -= 1
-        for key, values in ids.items():
-            values_to_remove = []
-            offset = 0
-            for i in range(0, len(values)):
-                if values[i] == "rand":
-                    values_to_remove.append(i)
-                    ids[key].append(random_values[random_values_count])
-                    random_values_count += 1
-                elif values[i] == "all":
-                    del values[i]
-                    for j in range(1, self.nodes_number+1):
-                        ids[key].append(str(j))
-                elif not values[i].isdigit():
-                    print("unknown id '" + values[i] + "' : it will be removed")
-                    values_to_remove.append(i)
-            for value_to_remove in values_to_remove:
-                del values[value_to_remove - offset]
-                offset += 1
+class Parser:
+    # pattern matching for commands
+    modify_link_pattern = re.compile(
+            " *from +(all +|(([0-9]+|rand) +)+)to +(all +|(([0-9]+|rand) +)+)(bidirectional +)?set +[a-z]+.*")
+    modify_random_link_pattern = re.compile(" *on +[0-9]+ +connections? +(bidirectional +)?set +[a-z]+.*")
+    reset_pattern = re.compile(" *reset *")
+    run_pattern = re.compile(" *run +[0-9]+ *")
+    do_pattern = re.compile(" *do *")
+    times_pattern = re.compile(" *[0-9]+ +times? *")
+
+    command_checker = {}
+
+    def __init__(self, command_checker):
+        self.command_checker = command_checker
+
+    # returns first number of a line, used for n times command
+    def get_times(self, test_line):
+        tokens = test_line.split()
+        times = int(tokens[0])
+        return times
 
     # function used to extract parameters from commands
     def get_params(self, test_line, operation_name):
@@ -171,7 +244,6 @@ class TestParser:
             params["netem_command"] = netem_command
             params["ids"]["sources"] = source_tokens
             params["ids"]["targets"] = destination_tokens
-            self.resolve_ids(params["ids"])
         elif operation_name == "rlink":
             netem_command = test_line.split("set")[1]
             first_part = test_line.split("set")[0]
@@ -185,36 +257,39 @@ class TestParser:
             params["connection_number"] = connection_number
         return params
 
-    # runs test file's command one after the other
-    def run_test(self, test_file):
+    # parses test file
+    def parse(self, test_file):
         do_open = -1
         pointers = []
         index = 0
+        commands_list = []
         while index < len(test_file):
+
+            test_line = test_file[index]
+            test_line = test_line.rstrip()
+
+            unknown_command = False
+
+            function = None
+            arguments = []
             try:
-                test_line = test_file[index]
-                test_line = test_line.rstrip()
-                print(">" + test_line)
                 if not test_line:
                     pass
                 elif self.modify_link_pattern.match(test_line):
                     params = self.get_params(test_line, "link")
-                    self.modify_link_from_to(params["ids"]["sources"], params["ids"]["targets"],
-                                             params["netem_command"],
-                                             params["bidirectional"])
+                    function = self.command_checker.modify_link_from_to
+                    arguments = [params["ids"]["sources"], params["ids"]["targets"], params["netem_command"],
+                                 params["bidirectional"]]
                 elif self.modify_random_link_pattern.match(test_line):
                     params = self.get_params(test_line, "rlink")
-                    self.modify_random_link(params["connection_number"], params["netem_command"],
-                                            params["bidirectional"])
+                    function = self.command_checker.modify_random_link
+                    arguments = [params["connection_number"], params["netem_command"], params["bidirectional"]]
                 elif self.reset_pattern.match(test_line):
-                    self.reset()
+                    function = self.command_checker.reset
                 elif self.run_pattern.match(test_line):
                     params = self.get_params(test_line, "run")
-                    try:
-                        self.run_command(int(params["nop"]))
-                    except:
-                        print("Unable to connect to test_daemon")
-                        break
+                    function = self.command_checker.run_command
+                    arguments = [int(params["nop"])]
                 elif self.do_pattern.match(test_line):
                     do_open += 1
                     if len(pointers) < do_open + 1:
@@ -229,14 +304,19 @@ class TestParser:
                     else:
                         do_open -= 1
                 else:
-                    print("Command \n\t>'" + str(test_line) + "'\n at line " + str(index + 1) + " unknown")
-                    break
-                index += 1
-            except:
-                print(
-                        "Command \n\t>'" + str(test_line) + "'\n at line " + str(index + 1) + " is not well formed!")
-                break
-        self.reset()
+                    unknown_command = True
+            except Exception as e:
+                raise TestException(SYNTAX_ERROR, "Syntax error in command '{}'".format(str(test_line)), index+1)
+
+            if unknown_command:
+                raise TestException(SYNTAX_ERROR, "Command '{}' is unknown".format(str(test_line)), index+1)
+
+            if function:
+                commands_list.append(attach_line(partial(function, *arguments), index+1))
+            index += 1
+
+        commands_list.append(self.command_checker.reset)
+        return commands_list
 
 
 def main():
@@ -246,8 +326,7 @@ def main():
         with open(sys.argv[1]) as configuration_file:
             conf = json.load(configuration_file)
 
-            server = Server("http://" + conf["testDaemon"])
-            test_parser = TestParser(NetemMaster(conf["nodes"]), len(conf["nodes"]), server)
+            test_daemon = Server("http://" + conf["testDaemon"])
 
             try:
                 # loads test file
@@ -258,10 +337,21 @@ def main():
                 if len(sys.argv) > 3:
                     output_file_path = sys.argv[3]
 
-                # sets output csv file path
-                test_parser.set_output_path(output_file_path)
-                # runs test specified
-                test_parser.run_test(test_file)
+                netem_master = NetemMaster(conf["nodes"])
+
+                executor = Executor(test_daemon, netem_master, output_file_path)
+                command_checker = CommandChecker(len(conf["nodes"]), executor, local_execution=True)
+                test_parser = Parser(command_checker)
+
+                try:
+                    command_list = test_parser.parse(test_file)
+                    while command_list:
+                        command = command_list.pop(0)()
+                        if command:
+                            command_list.append(command)
+                except TestException as e:
+                    print(e)
+
             except "FileNotFoundError":
                 print(sys.argv[1] + " is not a valid test file")
                 exit(1)
