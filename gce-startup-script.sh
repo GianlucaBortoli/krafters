@@ -25,6 +25,10 @@ wget -qO- https://download.rethinkdb.com/apt/pubkey.gpg | sudo apt-key add -
 sudo apt-get update && \
     sudo apt-get install -y rethinkdb
 
+sudo wget https://bootstrap.pypa.io/get-pip.py
+sudo python3.4 get-pip.py
+sudo -H pip install rethinkdb
+
 # notify provisioner script is executed
 instance=$(sudo curl http://metadata.google.internal/computeMetadata/v1/instance/attributes/myid -H "Metadata-Flavor: Google")
 bucket=$(sudo curl http://metadata.google.internal/computeMetadata/v1/instance/attributes/bucket -H "Metadata-Flavor: Google")
