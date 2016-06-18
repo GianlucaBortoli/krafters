@@ -1,23 +1,21 @@
 #!/usr/bin/python3.4
 
-# argv[1] = masterConfig.json
-# argv[2] = test file
-# argv[3] (optional) = output file
+
+import argparse
 from functools import partial
 from xmlrpc.client import ServerProxy as Server
 import json
-import logging
 import random
-import sys
 import re
 import csv
-
 
 SYNTAX_ERROR = "Syntax Error"
 ID_ERROR = "Id Error"
 LOCAL_EXECUTION_ERROR = "Local Execution Error"
 NETEM_ERROR = "Netem Error"
 
+
+# Custom exception
 class TestException(Exception):
     line = -1
     message = "undefined"
@@ -35,18 +33,21 @@ class TestException(Exception):
         return self.line > 0
 
     def __str__(self):
-        return "------->Line {}:\n\t[{}] {}\n".format(self.line, self.type, self.message)
+        return "[{}] At line {}: {}\n".format(self.type, self.line, self.message)
 
-
+# Calls add lines to exception
 def attach_line(fun, line):
-    if fun:
-        try:
-            #return partial(attach_line, fun(), line)
-            return fun()
-        except TestException as e:
-            if not e.is_line_defined():
-                e.set_line(line)
-                raise e
+    try:
+        if fun:
+            f = fun()
+            return partial(attach_line, f, line)
+    except TestException as e:
+        if not e.is_line_defined():
+            e.set_line(line)
+            raise e
+    except:
+        pass
+
 
 # class used to handle netem underlying network
 class NetemMaster:
@@ -60,8 +61,7 @@ class NetemMaster:
             self.nodes_rpc[str(n["id"])].create_root_qdisc()
         for n in nodes:
             if not self.nodes_rpc[str(n["id"])].init_qdisc():
-                print("Error initializing qdiscs")
-                sys.exit(1)
+                raise Exception("[{}] Error initializing qdiscs".format(NETEM_ERROR))
 
     # modify connection from source to target using netem_command
     def modify_connection(self, source, target, netem_command, bidirectional=False):
@@ -69,13 +69,14 @@ class NetemMaster:
         if str(source) == str(target):
             return
         if bidirectional:
-            print("Modify connection from " + str(source) + " to " + str(
-                    target) + " '" + netem_command + "' bidirectional")
+            print("[Netem] Modify connection from {} to {} both directions with command '{}'".format(str(source), str(
+                    target), netem_command))
             if not self.nodes_rpc[str(source)].modify_outgoing_connection(str(target), netem_command) or not \
                     self.nodes_rpc[str(target)].modify_outgoing_connection(str(source), netem_command):
                 raise TestException(NETEM_ERROR, "'{}' is not a valid netem command".format(netem_command))
         else:
-            print("Modify connection from " + str(source) + " to " + str(target) + " '" + netem_command + "'")
+            print("[Netem] Modify connection from {} to {} with command '{}'".format(str(source), str(
+                    target), netem_command))
             if not self.nodes_rpc[str(source)].modify_outgoing_connection(str(target), netem_command):
                 raise TestException(NETEM_ERROR, "'{}' is not a valid netem command".format(netem_command))
 
@@ -86,7 +87,7 @@ class NetemMaster:
                 self.modify_connection(source, target, netem_command, bidirectional)
 
 
-class CommandChecker:
+class CommandUnwrapper:
     nodes_number = -1
     executor = {}
     local_execution = False
@@ -100,13 +101,14 @@ class CommandChecker:
         # no bound in operation number
         return partial(self.executor.run_command, n_op)
 
-    #checks if ids are valid
+    # checks if ids are valid
     def modify_link_from_to(self, sources, targets, netem_command, bidirectional):
         sources, targets = self.resolve_ids(sources, targets)
         # if it's a local execution checks if the parameters are compatible
-        if self.local_execution and (len(sources) < self.nodes_number-1 or (bidirectional and targets < self.nodes_number-1)):
+        if self.local_execution and (
+                        len(sources) < self.nodes_number - 1 or (bidirectional and targets < self.nodes_number - 1)):
             # if not raises an exception
-            raise TestException(LOCAL_EXECUTION_ERROR, "unable to specify single sources in local commands")
+            raise TestException(LOCAL_EXECUTION_ERROR, "impossible to specify single sources in local commands")
         return partial(self.executor.modify_link_from_to, sources, targets, netem_command, bidirectional)
 
     # generates random id for links
@@ -140,12 +142,12 @@ class CommandChecker:
             if value.isdigit():
                 integer = int(value)
                 if integer > self.nodes_number:
-                    raise TestException(ID_ERROR,"Id {} out of range ".format(str(value)))
+                    raise TestException(ID_ERROR, "Id {} out of range ".format(str(value)))
                 result.add(integer)
             elif value == "rand":
                 result.add(random_values.pop(0))
             elif value == "all":
-                for i in range(1, self.nodes_number+1):
+                for i in range(1, self.nodes_number + 1):
                     result.add(i)
             else:
                 raise TestException(ID_ERROR, "Id {} is not valid".format(str(value)))
@@ -157,15 +159,15 @@ class CommandChecker:
         random_values = []
 
         # checks which id has been used
-        for value in sources+targets:
+        for value in sources + targets:
             if value.isdigit():
                 integer = int(value)
                 referred_ids.add(integer)
             if value == "rand":
                 random_values_count += 1
 
-        if len(referred_ids)+random_values_count > self.nodes_number:
-            raise TestException(ID_ERROR,"'Rand' keyword has been used too many times!")
+        if len(referred_ids) + random_values_count > self.nodes_number:
+            raise TestException(ID_ERROR, "'Rand' keyword has been used too many times!")
 
         # generates random numbers to resolve "rand"
         while random_values_count > 0:
@@ -196,12 +198,13 @@ class Executor:
 
     # calls run function on test_daemon and saves results to csv
     def run_command(self, n_op):
+        print("[Run] Running {} operations".format(str(n_op)))
         self.csv_writer.writerow(self.test_daemon.run(n_op))
+        print("[Run] Done")
 
     # calls netem master to change connection rules
     def modify_link_from_to(self, sources, targets, netem_command, bidirectional):
         self.netem_master.modify_connections(sources, targets, netem_command, bidirectional)
-
 
 
 class Parser:
@@ -285,7 +288,7 @@ class Parser:
                     function = self.command_checker.modify_random_link
                     arguments = [params["connection_number"], params["netem_command"], params["bidirectional"]]
                 elif self.reset_pattern.match(test_line):
-                    function = self.command_checker.reset
+                    function = partial(self.command_checker.reset)
                 elif self.run_pattern.match(test_line):
                     params = self.get_params(test_line, "run")
                     function = self.command_checker.run_command
@@ -306,60 +309,91 @@ class Parser:
                 else:
                     unknown_command = True
             except Exception as e:
-                raise TestException(SYNTAX_ERROR, "Syntax error in command '{}'".format(str(test_line)), index+1)
+                raise TestException(SYNTAX_ERROR, "Syntax error in command '{}'".format(str(test_line)), index + 1)
 
             if unknown_command:
-                raise TestException(SYNTAX_ERROR, "Command '{}' is unknown".format(str(test_line)), index+1)
+                raise TestException(SYNTAX_ERROR, "Command '{}' is unknown".format(str(test_line)), index + 1)
 
             if function:
-                commands_list.append(attach_line(partial(function, *arguments), index+1))
+                commands_list.append(partial(attach_line, partial(function, *arguments), index + 1))
             index += 1
 
-        commands_list.append(self.command_checker.reset)
         return commands_list
 
 
 def main():
-    logging.basicConfig(filename='debug.log', level=logging.DEBUG)
+    argument_parser = argparse.ArgumentParser(description="Run a test file on the distributed system")
+    argument_parser.add_argument("config_file_path", type=str,
+                                 help="path to masterConfiguration file generated by provisioner.py")
+    argument_parser.add_argument("test_file_path", type=str,
+                                 help="test file to execute")
+    argument_parser.add_argument("-o", "--output", type=str, dest="output_file_path",
+                                 help="path of the output file")
+    argument_parser.add_argument("-l", help="executes test in local mode", action="store_true")
+
+    args = argument_parser.parse_args()
+
+    # Loads configuration file
     try:
-        # Loads configuration file
-        with open(sys.argv[1]) as configuration_file:
+        with open(args.config_file_path) as configuration_file:
             conf = json.load(configuration_file)
+    except FileNotFoundError:
+        print("'{}' does not exist".format(args.config_file_path))
+        exit(2)
 
-            test_daemon = Server("http://" + conf["testDaemon"])
+    # Loads test file
+    try:
+        with open(args.test_file_path) as f:
+            test_file_lines = f.readlines()
+    except FileNotFoundError:
+        print("'{}' does not exist".format(args.test_file_path))
+        exit(2)
 
-            try:
-                # loads test file
-                with open(sys.argv[2]) as f:
-                    test_file = f.readlines()
-                output_file_path = sys.argv[2] + ".csv"
-                # if 3rd argument is specified, it is used as output file path
-                if len(sys.argv) > 3:
-                    output_file_path = sys.argv[3]
-
-                netem_master = NetemMaster(conf["nodes"])
-
-                executor = Executor(test_daemon, netem_master, output_file_path)
-                command_checker = CommandChecker(len(conf["nodes"]), executor, local_execution=True)
-                test_parser = Parser(command_checker)
-
-                try:
-                    command_list = test_parser.parse(test_file)
-                    while command_list:
-                        command = command_list.pop(0)()
-                        if command:
-                            command_list.append(command)
-                except TestException as e:
-                    print(e)
-
-            except "FileNotFoundError":
-                print(sys.argv[1] + " is not a valid test file")
-                exit(1)
-    except "FileNotFoundError":
-        print(sys.argv[1] + " is not a valid JSON file")
+    # Connects to network managers
+    try:
+        netem_master = NetemMaster(conf["nodes"])
+    except Exception as e:
+        print("[Connection error] Error connecting to nodes network manager: {}".format(e))
         exit(1)
-    except:
-        pass
+
+    # Connects to to test daemon
+    try:
+        if not conf["testDaemon"]:
+            print("[Configuration Error] test daemon address has not been specified in '{}' ".format(
+                args.config_file_path))
+            exit(2)
+        test_daemon = Server("http://" + conf["testDaemon"])
+    except Exception as e:
+        print("[Connection error] Error connecting to test daemon: on address {}".format(conf["testDaemon"]))
+        exit(1)
+
+    # Sets output file path
+    output_file_path = args.test_file_path + ".csv"
+    if args.output_file_path:
+        output_file_path = args.output_file_path
+
+    # Initialize Executor, Checker and Parser
+    if not conf["nodes"]:
+        print("[Configuration Error] nodes have not been specified correctly on '{}' configuration file".format(
+            args.config_file_path))
+        exit(2)
+    executor = Executor(test_daemon, netem_master, output_file_path)
+    command_checker = CommandUnwrapper(len(conf["nodes"]), executor, args.l)
+    test_parser = Parser(command_checker)
+
+    # Runs test file
+    try:
+        command_list = test_parser.parse(test_file_lines)
+        while command_list:
+            command = command_list.pop(0)()
+            if command:
+                command_list.append(command)
+    except Exception as e:
+        print(e)
+        exit(1)
+
+    command_checker.reset()
+    print("\nRun completed successfully, results have been saved to {} !\n".format(output_file_path))
 
 
 if __name__ == "__main__":

@@ -3,26 +3,26 @@
     "nodes": [
         {
             "interface": "lo",
+            "address": "127.0.0.1",
+            "rpcPort": 32979,
             "id": 1,
-            "address": "127.0.0.1",
-            "rpcPort": 57421,
-            "port": 58362
+            "port": 41737
         },
         {
             "interface": "lo",
+            "address": "127.0.0.1",
+            "rpcPort": 46314,
             "id": 2,
-            "address": "127.0.0.1",
-            "rpcPort": 53146,
-            "port": 34800
+            "port": 44419
         },
         {
             "interface": "lo",
-            "id": 3,
             "address": "127.0.0.1",
-            "rpcPort": 33764,
-            "port": 47541
+            "rpcPort": 52468,
+            "id": 3,
+            "port": 53231
         }
     ],
-    "algorithm": "rethinkdb",
-    "testDaemon": "127.0.0.1:12346"
+    "testDaemon": "127.0.0.1:12346",
+    "algorithm": "rethinkdb"
 }
