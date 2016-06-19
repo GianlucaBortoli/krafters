@@ -9,7 +9,7 @@ from googleapiclient import discovery
 from googleapiclient import http
 from test_daemon import TEST_DAEMON_PORT
 from configure_daemon import CONFIGURE_DAEMON_PORT, NETWORK_MANAGER_PORT, \
-    configure_rethinkdb_master, configure_rethinkdb_follower, run_test_daemon
+    configure_rethinkdb_master, configure_rethinkdb_follower, run_test_daemon, run_paxos_node, LOCAL_NODE_CONF_FILE
 from xmlrpc.client import ServerProxy as rpcClient
 import argparse
 import json
@@ -19,7 +19,7 @@ import sys
 
 MAX_CLUSTER_NODES = 8  # default CPU-quota on GCE
 CLUSTER_MODES = ["local", "gce"]
-CONSENSUS_ALGORITHMS = ["pso", "rethinkdb"]
+CONSENSUS_ALGORITHMS = ["pso", "rethinkdb", "paxos"]
 
 GCP_PROJECT_ID = "krafters-1334"
 GCS_BUCKET = "krafters"
@@ -54,22 +54,27 @@ def provide_local_cluster(nodes_num, algorithm):
         cluster.append(new_node)
     # ✓ 1. spin machines
 
+    # 1.1 provide node-specific configuration files
+    node_file_path = "/tmp/provision_node_{}_config.json"
+    for node in cluster:
+        with open(node_file_path.format(node["id"]), "w") as out_f:
+            json.dump(get_node_config(cluster, node), out_f, indent=4)
+    # ✓ 1.1 provide node-specific configuration files
+
     # 2. run algorithm [no need to run a configure daemon on localhost]
     print("Going to run algorithm {} on cluster...".format(algorithm))
     if algorithm == "pso":
-        pass  # nothing to configure
+        pass
+    elif algorithm == "paxos":
+        configure_paxos_local(cluster, node_file_path)
     elif algorithm == "rethinkdb":
         configure_rethinkdb_local(cluster)
     # ✓ 2. run algorithm
 
     # 3. run network managers
     print("Running network manager on every node...")
-    node_file_path = "/tmp/provision_node_{}_config.json"
     for node in cluster:
-        node_config_file = node_file_path.format(node["id"])
-        with open(node_config_file, "w") as out_f:
-            json.dump(get_node_config(cluster, node), out_f, indent=4)
-        command = [sys.executable, "network_manager.py", node_config_file]
+        command = [sys.executable, "network_manager.py", node_file_path.format(node["id"])]
         subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)  # process is run asynchronously
     for node in cluster:
         while not is_socket_free(node["address"], node["rpcPort"]):  # check that Popen actually started the script
@@ -161,11 +166,18 @@ def provide_gce_cluster(nodes_num, algorithm):
         gcs.objects().delete(bucket=GCS_BUCKET, object=vm_id_file).execute()  # clean up
     # ✓ 1.2 wait for startup scripts
 
+    configure_daemons = [rpcClient('http://{}:{}'.format(node["address"], CONFIGURE_DAEMON_PORT)) for node in cluster]
+    # 1.3 provide node-specific configuration files [via configure daemons]
+    for configure_daemon in configure_daemons:
+        configure_daemon.download_node_config()
+    # ✓ 1.3 provide node-specific configuration files
+
     # 2. run algorithm [via configure daemons]
     print("Going to run algorithm {} on cluster...".format(algorithm))
-    configure_daemons = [rpcClient('http://{}:{}'.format(node["address"], CONFIGURE_DAEMON_PORT)) for node in cluster]
     if algorithm == "pso":
         pass
+    elif algorithm == "paxos":
+        configure_paxos_gce(cluster, configure_daemons)
     elif algorithm == "rethinkdb":
         configure_rethinkdb_gce(cluster, configure_daemons)
     # ✓ 2. run algorithm [via configure daemons]
@@ -216,8 +228,9 @@ def get_free_random_port():
             return port
 
 
-def is_socket_free(host, port):
-    with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
+def is_socket_free(host, port, tcp=True):
+    protocol = socket.SOCK_STREAM if tcp else socket.SOCK_DGRAM
+    with closing(socket.socket(socket.AF_INET, protocol)) as sock:
         return sock.connect_ex((host, port)) == 0  # function returns 0 if port is open (no process is using the port)
 
 
@@ -320,6 +333,18 @@ def upload_object(gcs, file_path, file_name):
 
 
 # algorithm utility
+
+def configure_paxos_local(cluster, node_file_path):
+    for node in cluster:
+        print("Running Paxos node at {}:{}...".format(node["address"], node["port"]))
+        print(run_paxos_node(node["port"], node_file_path.format(node["id"])))
+
+
+def configure_paxos_gce(cluster, configure_daemons):
+    for (i, node) in enumerate(cluster):
+        print("Running Paxos node at {}:{}...".format(node["address"], node["port"]))
+        print(configure_daemons[i].run_paxos_node(node["port"], LOCAL_NODE_CONF_FILE))
+
 
 def configure_rethinkdb_local(cluster):
     # RethinkDB requires multiple nodes to join the master

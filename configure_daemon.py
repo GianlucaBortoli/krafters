@@ -12,6 +12,8 @@ import socket
 import os
 # NOTE DO NOT ADD EXTERNAL DEPENDENCIES: THIS SCRIPT HAS TO BE EXECUTED IN A STANDALONE WAY ON VM STARTUP
 
+# TODO ENSURE PAXOS IS INSTALLED
+
 CONFIGURE_DAEMON_PORT = 12345
 TEST_DAEMON_PORT = 12346
 NETWORK_MANAGER_PORT = 12347
@@ -29,6 +31,14 @@ def run_test_daemon(algorithm, algorithm_port):
 
 
 def run_network_manager():
+    # ensure this function is called only when the node can access its configuration file
+    command = ["sudo", "./network_manager.py", LOCAL_NODE_CONF_FILE]
+    subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)  # process is run asynchronously
+    wait_for_ports([NETWORK_MANAGER_PORT], 0.3)
+    print("Network manager started")
+
+
+def download_node_config():
     # this rpc will download the node-specific configuration file from gs and run the network manager
     # each node can discover its configuration file by querying its own metadata
     command = ["curl", "http://metadata.google.internal/computeMetadata/v1/instance/attributes/clusterConfig", "-H",
@@ -44,10 +54,15 @@ def run_network_manager():
     command = ["sudo", "gsutil", "cp", "gs://{}/{}".format(bucket, gcs_node_conf_file), LOCAL_NODE_CONF_FILE]
     subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
     print("GCS file download completed")
-    command = ["sudo", "./network_manager.py", LOCAL_NODE_CONF_FILE]
+
+
+# Paxos functions
+
+def run_paxos_node(port, node_config_file):
+    command = ["./paxos/custom_server.py", node_config_file]  # TODO check if sudo must be added
     subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)  # process is run asynchronously
-    wait_for_ports([NETWORK_MANAGER_PORT], 0.3)
-    print("Network manager started")
+    wait_for_ports([port], 0.3, tcp=False)
+    return "Paxos node started"
 
 
 # RethinkDB functions
@@ -78,15 +93,16 @@ def stop_rethinkdb():
 
 # socket utility
 
-def is_socket_free(host, port):
-    with closing(socket.socket(socket.AF_INET, socket.SOCK_STREAM)) as sock:
+def is_socket_free(host, port, tcp=True):
+    protocol = socket.SOCK_STREAM if tcp else socket.SOCK_DGRAM
+    with closing(socket.socket(socket.AF_INET, protocol)) as sock:
         return sock.connect_ex((host, port)) == 0  # function returns 0 if port is open (no process is using the port)
 
 
-def wait_for_ports(ports_to_check, timeout):
+def wait_for_ports(ports_to_check, timeout, tcp=True):
     for port in ports_to_check:
         print("Waiting for port {}...".format(port))
-        while not is_socket_free("127.0.0.1", port):
+        while not is_socket_free("127.0.0.1", port, tcp):
             sleep(timeout)
 
 
@@ -99,6 +115,8 @@ def main():
         # register all exposed functions
         server.register_function(run_test_daemon, "run_test_daemon")
         server.register_function(run_network_manager, "run_network_manager")
+        server.register_function(download_node_config, "download_node_config")
+        server.register_function(run_paxos_node, "run_paxos_node")
         server.register_function(configure_rethinkdb_master, "configure_rethinkdb_master")
         server.register_function(configure_rethinkdb_follower, "configure_rethinkdb_follower")
         server.register_function(stop_rethinkdb, "stop_rethinkdb")
