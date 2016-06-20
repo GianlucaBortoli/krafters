@@ -3,6 +3,7 @@
 import matplotlib.pyplot as plt
 import csv
 import sys
+import seaborn as sns
 
 # Format of the chart:
 # x axis -> append number
@@ -29,8 +30,29 @@ def generatePlot(result_csv):
     plt.savefig(result_csv + ".png")
     plt.show()
 
+def generateDistributionPlot(result_csv):
+    test = []
+    with open(result_csv, "r") as f:
+        rdr = csv.reader(f, delimiter=',', quotechar='|')
+        for row in rdr:
+            test.append(row)
+
+    sns.set(style="white", palette="muted", color_codes=True)
+    i = 0
+    for row in test:
+        i += 1
+        d = [float(i) for i in row]
+        # Plot a filled kernel density estimate
+        sns.distplot(d, hist=False, kde_kws={"shade": True}, label=str(i))
+    plt.xlim([-0.01,0.1])
+    plt.savefig(result_csv + ".png")
+
+def generateMassPlot(result_csv):
+    #to implement
+    pass
+
 if __name__ == '__main__':
     if len(sys.argv) == 2:
-        generatePlot(sys.argv[1])
+        generateDistributionPlot(sys.argv[1])
     else:
         print("Please provide *only* one csv file as argument")

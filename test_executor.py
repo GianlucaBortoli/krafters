@@ -199,7 +199,8 @@ class Executor:
     # calls run function on test_daemon and saves results to csv
     def run_command(self, n_op):
         print("[Run] Running {} operations".format(str(n_op)))
-        self.csv_writer.writerow(self.test_daemon.run(n_op))
+        result = self.test_daemon.run(n_op)
+        self.csv_writer.writerow(result)
         print("[Run] Done")
 
     # calls netem master to change connection rules
@@ -266,6 +267,7 @@ class Parser:
         pointers = []
         index = 0
         commands_list = []
+        test_file.append("reset")
         while index < len(test_file):
 
             test_line = test_file[index]
@@ -317,7 +319,6 @@ class Parser:
             if function:
                 commands_list.append(partial(attach_line, partial(function, *arguments), index + 1))
             index += 1
-
         return commands_list
 
 
