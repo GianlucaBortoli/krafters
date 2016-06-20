@@ -1,4 +1,5 @@
 #!/usr/bin/python2.7
+from functools import partial
 
 import sys
 import os.path
@@ -19,6 +20,10 @@ from resolution_strategy import ExponentialBackoffResolutionStrategyMixin
 from master_strategy     import DedicatedMasterStrategyMixin
 
 
+def onUpdateFunction(new_instance_number, new_current_value):
+    print "CALLBACK: ", new_instance_number, new_current_value
+
+
 def main():
     with open(sys.argv[1]) as configuration_file:
         configuration = json.load(configuration_file)
@@ -32,7 +37,7 @@ def main():
     state_file = "./paxos_state_{}.json".format(id)
     peers = {peer["id"]: (peer["address"], peer["port"]) for peer in configuration["peers"]}
     peers[id] = (configuration["host"]["address"], configuration["host"]["port"])
-    r = ReplicatedValue(id, peers.keys(), state_file)
+    r = ReplicatedValue(id, peers.keys(), state_file, partial(onUpdateFunction))
     m = Messenger(id, peers, r)
     reactor.run()
 

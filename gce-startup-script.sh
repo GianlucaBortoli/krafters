@@ -12,6 +12,8 @@ sudo chmod 777 network_manager.py
 # fetch test_daemon.py
 curl https://raw.githubusercontent.com/GianlucaBortoli/krafters/master/test_daemon.py > test_daemon.py
 sudo chmod 777 test_daemon.py
+curl https://raw.githubusercontent.com/GianlucaBortoli/krafters/master/test_daemon2.py > test_daemon2.py
+sudo chmod 777 test_daemon2.py
 # fetch configure_daemon.py
 curl https://raw.githubusercontent.com/GianlucaBortoli/krafters/master/configure_daemon.py > configure_daemon.py
 sudo chmod 777 configure_daemon.py

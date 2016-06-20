@@ -23,12 +23,13 @@ from composable_paxos import PaxosInstance, ProposalID, Prepare, Nack, Promise, 
 
 class BaseReplicatedValue (object):
 
-    def __init__(self, network_uid, peers, state_file):
+    def __init__(self, network_uid, peers, state_file, onUpdateCallback):
         self.messenger   = None
         self.network_uid = network_uid
         self.peers       = peers            # list of peer network uids
         self.quorum_size = len(peers)/2 + 1
         self.state_file  = state_file
+        self.onUpdateCallback = onUpdateCallback
 
         self.load_state()
 
@@ -110,6 +111,7 @@ class BaseReplicatedValue (object):
         self.paxos = PaxosInstance(self.network_uid, self.quorum_size, None, None, None)
 
         print 'UPDATED: ', new_instance_number, new_current_value
+        self.onUpdateCallback(new_instance_number, new_current_value)
 
 
     def send_prepare(self, proposal_id):

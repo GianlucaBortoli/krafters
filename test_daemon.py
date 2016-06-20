@@ -34,16 +34,6 @@ def rethinkdbAppendEntry(connection):
         logging.error('{} not added'.format(value))
 
 
-def psoAppendEntry():
-    # TODO: implement me
-    pass
-
-
-def paxosAppendEntry():
-    # TODO: implement me
-    pass
-
-
 # class used to implement different append requests for different algorithms
 class TestManager:
     def __init__(self, algorithm, algorithm_port):
@@ -55,10 +45,6 @@ class TestManager:
             logging.info("Connection with RethinkDB successful")
             rethinkdbSetup(self.rdb_connection)
             self.appendFunction = partial(rethinkdbAppendEntry, self.rdb_connection)
-        elif algorithm == "pso":
-            self.appendFunction = partial(psoAppendEntry)
-        elif algorithm == "paxos":
-            self.appendFunction = partial(paxosAppendEntry)
 
     # wrapper used to execute multiple operations and register times
     def run(self, times):

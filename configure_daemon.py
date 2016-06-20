@@ -24,7 +24,10 @@ LOCAL_NODE_CONF_FILE = "node_conf.json"
 
 def run_test_daemon(algorithm, algorithm_port):
     file_path = os.path.dirname(os.path.abspath(__file__)).replace(" ", "\ ")
-    cmd = "python3.4 {}/test_daemon.py '' {} {} &".format(file_path, algorithm, algorithm_port)
+    if algorithm in ["rethinkdb"]:
+        cmd = "python3.4 {}/test_daemon.py '' {} {} &".format(file_path, algorithm, algorithm_port)
+    else:
+        cmd = "python2.7 {}/test_daemon2.py '' {} {} &".format(file_path, algorithm, algorithm_port)
     subprocess.Popen(cmd, shell=True, stdout=DEVNULL).communicate()  # process is run in background
     wait_for_ports([TEST_DAEMON_PORT], 0.5)
     print("Test daemon process started")
