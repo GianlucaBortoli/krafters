@@ -392,6 +392,21 @@ def main():
     args = parser.parse_args()
     print("Going to deploy a cluster of {} nodes on {}. Please wait...".format(args.nodes, args.mode))
 
+    try:
+        p = subprocess.Popen("sudo echo",
+                                 stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE,
+                                 shell=True)
+        out, err = p.communicate()
+        if err:
+            raise Exception()
+    except:
+        print("You must execute this program as sudoer!")
+        exit(1)
+
+
+
+
     # Provisioning steps:
     # 1. spin machines (possibly running a configure daemon on each of them)
     # 2. run algorithm (possibly by using each configure daemon)

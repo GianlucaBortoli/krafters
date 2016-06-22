@@ -1,7 +1,7 @@
 #!/usr/bin/python3.4
 
 # Daemon listening for test_executor commands
-
+import timeit
 from functools import partial
 from xmlrpc.server import SimpleXMLRPCServer
 import rethinkdb as r
@@ -50,9 +50,9 @@ class TestManager:
     def run(self, times):
         results = []
         for _ in range(0, times):
-            t = time.perf_counter()
+            t = timeit.default_timer()
             self.appendFunction()
-            results.append(time.perf_counter() - t)
+            results.append(timeit.default_timer() - t)
         return results
 
 
