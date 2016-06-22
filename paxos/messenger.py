@@ -3,6 +3,7 @@
 #
 
 import json
+import timeit
 
 from twisted.internet import reactor, protocol
 
@@ -27,8 +28,9 @@ class Messenger(protocol.DatagramProtocol):
 
 
     def paxos_append(self, value):
+        t = timeit.default_timer()
         self.replicated_val.propose_update(value)
-        return None
+        return t
 
         
     def datagramReceived(self, packet, from_addr):

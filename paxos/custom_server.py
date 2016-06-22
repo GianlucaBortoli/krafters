@@ -5,6 +5,7 @@ import sys
 import os.path
 import json
 import threading
+import timeit
 
 from twisted.internet import reactor
 
@@ -25,7 +26,8 @@ PAXOS_APPEND_PORT = 12366
 
 def onUpdateFunction(test_daemon_client, new_current_value):
     print "CALLBACK: ", new_current_value
-    test_daemon_client.paxos_append_complete(new_current_value)
+    t = timeit.default_timer()
+    test_daemon_client.paxos_append_complete(new_current_value, t)
 
 
 def noop(new_current_value):

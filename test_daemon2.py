@@ -12,11 +12,9 @@ import threading
 import time
 import logging
 
-from twisted.internet import reactor, defer, protocol
-# TODO: ENSURE TWISTED IS INSTALLED
 # NOTE DO NOT ADD EXTERNAL DEPENDENCIES: THIS SCRIPT HAS TO BE EXECUTED IN A STANDALONE WAY ON VM STARTUP
 
-TEST_DAEMON_PORT = 12346
+TEST_DAEMON_PORT = 2082
 DEFAULT_VALUE = "value"
 DEFAULT_PAXOS_VALUE = 1
 
@@ -31,42 +29,6 @@ class MyXMLRPCServer(ThreadingMixIn, SimpleXMLRPCServer):
     '''
     Mixes SimpleXMLRPCServer and ThreadingMixIn
     '''
-
-
-class ClientProtocol(protocol.DatagramProtocol):
-    def __init__(self, node_ip, node_port, new_value):
-        self.addr = (node_ip, node_port)
-        self.new_value = new_value
-
-    def startProtocol(self):
-        self.transport.write('propose {0}'.format(self.new_value), self.addr)
-
-
-class ReactorPaxosNode:
-    def __init__(self, ip, port):
-        self.spin = True
-        self.ip = ip
-        self.port = port
-        self.queue = Queue()
-        thread = threading.Thread(target=self.run, args=())
-        thread.start()
-
-    def run(self):
-        def append_from_queue():
-            while self.spin:
-                if not self.queue.empty():
-                    reactor.listenUDP(0, ClientProtocol(self.ip, int(self.port), self.queue.get()))
-                    # reactor.listenTCP(0, ClientProtocol(self.ip, int(self.port), self.queue.get()))
-            reactor.stop()
-
-        reactor.callWhenRunning(append_from_queue)
-        reactor.run(installSignalHandlers=False)
-
-    def stop(self):
-        self.spin = False
-
-    def add_item(self, item):
-        self.queue.put(item)
 
 
 # class used to implement different append requests for different algorithms
