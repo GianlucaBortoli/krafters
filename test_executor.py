@@ -335,7 +335,6 @@ def main():
                                  help="test file to execute")
     argument_parser.add_argument("-o", "--output", type=str, dest="output_file_path",
                                  help="path of the output file")
-    argument_parser.add_argument("-l", help="executes test in local mode", action="store_true")
 
     args = argument_parser.parse_args()
 
@@ -384,7 +383,7 @@ def main():
             args.config_file_path))
         exit(2)
     executor = Executor(test_daemon, netem_master, output_file_path)
-    command_checker = CommandUnwrapper(len(conf["nodes"]), executor, args.l)
+    command_checker = CommandUnwrapper(len(conf["nodes"]), executor, conf["mode"] == "local")
     test_parser = Parser(command_checker)
 
     # Runs test file
