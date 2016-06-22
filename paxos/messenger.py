@@ -25,6 +25,11 @@ class Messenger(protocol.DatagramProtocol):
     def startProtocol(self):
         self.replicated_val.set_messenger(self)
 
+
+    def paxos_append(self, value):
+        self.replicated_val.propose_update(value)
+        return None
+
         
     def datagramReceived(self, packet, from_addr):
         try:
@@ -32,7 +37,7 @@ class Messenger(protocol.DatagramProtocol):
             message_type, data = packet.split(' ', 1)
 
             if message_type == 'propose':
-
+                print data
                 self.replicated_val.propose_update( data )
 
             else:

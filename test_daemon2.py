@@ -4,6 +4,8 @@
 from Queue import Queue
 from SimpleXMLRPCServer import SimpleXMLRPCServer
 
+import xmlrpclib
+
 from functools import partial
 import sys
 import threading
@@ -16,6 +18,19 @@ from twisted.internet import reactor, defer, protocol
 
 TEST_DAEMON_PORT = 12346
 DEFAULT_VALUE = "value"
+DEFAULT_PAXOS_VALUE = 1
+
+PAXOS_CLUSTER_ACK = None
+
+PAXOS_APPEND_PORT = 12366
+
+from SocketServer import ThreadingMixIn
+from SimpleXMLRPCServer import SimpleXMLRPCServer
+
+class MyXMLRPCServer(ThreadingMixIn, SimpleXMLRPCServer):
+    '''
+    Mixes SimpleXMLRPCServer and ThreadingMixIn
+    '''
 
 
 class ClientProtocol(protocol.DatagramProtocol):
@@ -40,7 +55,8 @@ class ReactorPaxosNode:
         def append_from_queue():
             while self.spin:
                 if not self.queue.empty():
-                    reactor.listenUDP(0, ClientProtocol(self.ip, self.port, self.queue.get()))
+                    reactor.listenUDP(0, ClientProtocol(self.ip, int(self.port), self.queue.get()))
+                    # reactor.listenTCP(0, ClientProtocol(self.ip, int(self.port), self.queue.get()))
             reactor.stop()
 
         reactor.callWhenRunning(append_from_queue)
@@ -55,14 +71,15 @@ class ReactorPaxosNode:
 
 # class used to implement different append requests for different algorithms
 class TestManager:
-    def __init__(self, server_port, algorithm, algorithm_port):
+    def __init__(self, algorithm_host, algorithm, algorithm_port):
         self.algorithm = algorithm
         self.algorithm_port = algorithm_port
 
         if algorithm == "pso":
             pass  # TODO
         elif algorithm == "paxos":
-            self.paxos_node = ReactorPaxosNode(server_port, TEST_DAEMON_PORT)
+            self.paxos_rpc_client = xmlrpclib.ServerProxy("http://{}:{}".format(algorithm_host, PAXOS_APPEND_PORT))
+            # self.paxos_node = ReactorPaxosNode(algorithm_host, algorithm_port)
 
     # wrapper used to execute multiple operations and register times
     def run(self, times):
@@ -72,16 +89,31 @@ class TestManager:
             if self.algorithm == "pso":
                 pass  # TODO IMPLEMENT ME
             elif self.algorithm == "paxos":
-                self.paxos_node.add_item(DEFAULT_VALUE)  # TODO CONFIGURE PAXOS SERVER TO SEND REPLY
+                global PAXOS_CLUSTER_ACK
+                self.paxos_rpc_client.paxos_append(666)
+                while PAXOS_CLUSTER_ACK is None:
+                    pass
+                PAXOS_CLUSTER_ACK = None
             results.append(time.clock() - t)  # TODO CHECK IF CONSISTENT WITH TIME.PERF()
         return results
 
 
+def paxos_append_complete(new_current_value):
+    global PAXOS_CLUSTER_ACK
+    PAXOS_CLUSTER_ACK = new_current_value
+    print "RCV: ", new_current_value
+    return None
+
+
 def run_test_server(server_port, algorithm, algorithm_port):
+    if server_port == '\'\'' or server_port == '':
+        server_port = '127.0.0.1'
     logging.basicConfig(filename='test_daemon_debug.log', level=logging.DEBUG)
-    server = SimpleXMLRPCServer((server_port, TEST_DAEMON_PORT), allow_none=True)
+    # server = SimpleXMLRPCServer((server_port, TEST_DAEMON_PORT), allow_none=True)
+    server = MyXMLRPCServer((server_port, TEST_DAEMON_PORT), allow_none=True)
     test_manager = TestManager(server_port, algorithm, algorithm_port)
     server.register_function(test_manager.run, "run")
+    server.register_function(paxos_append_complete, "paxos_append_complete")
     server.serve_forever()
 
 

@@ -61,9 +61,12 @@ def download_node_config():
 
 # Paxos functions
 
-def run_paxos_node(port, node_config_file):
-    command = ["./paxos/custom_server.py", node_config_file]  # TODO check if sudo must be added
-    subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)  # process is run asynchronously
+def run_paxos_node(port, node_config_file, test_daemon=None):
+    if test_daemon:
+        cmd = "./paxos/custom_server.py {} {} &".format(node_config_file, test_daemon)
+    else:
+        cmd = "./paxos/custom_server.py {} &".format(node_config_file)
+    subprocess.Popen(cmd, shell=True, stdout=DEVNULL).communicate()
     wait_for_ports([port], 0.3, tcp=False)
     return "Paxos node started"
 

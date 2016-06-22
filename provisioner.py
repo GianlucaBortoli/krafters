@@ -21,6 +21,9 @@ MAX_CLUSTER_NODES = 8  # default CPU-quota on GCE
 CLUSTER_MODES = ["local", "gce"]
 CONSENSUS_ALGORITHMS = ["pso", "rethinkdb", "paxos"]
 
+# TODO ENSURE YOU ARE SUDO BOTH HERE AND IN TEAR_DOWN
+# TODO UPDATE USAGE OF TEST_EXECUTOR
+
 GCP_PROJECT_ID = "krafters-1334"
 GCS_BUCKET = "krafters"
 GCE_REGION_ID = "us-central1"
@@ -62,11 +65,12 @@ def provide_local_cluster(nodes_num, algorithm):
     # ✓ 1.1 provide node-specific configuration files
 
     # 2. run algorithm [no need to run a configure daemon on localhost]
+    test_daemon_endpoint = "127.0.0.1:" + str(TEST_DAEMON_PORT)
     print("Going to run algorithm {} on cluster...".format(algorithm))
     if algorithm == "pso":
         pass
     elif algorithm == "paxos":
-        configure_paxos_local(cluster, node_file_path)
+        configure_paxos_local(cluster, node_file_path, test_daemon_endpoint)
     elif algorithm == "rethinkdb":
         configure_rethinkdb_local(cluster)
     # ✓ 2. run algorithm
@@ -83,19 +87,18 @@ def provide_local_cluster(nodes_num, algorithm):
     # ✓ 3. run network managers
 
     # 4. run test daemon
-    endpoint = "127.0.0.1:" + str(TEST_DAEMON_PORT)
-    print("Running the test daemon on {}...".format(endpoint))
+    print("Running the test daemon on {}...".format(test_daemon_endpoint))
     run_test_daemon(algorithm, cluster[0]['port'])
-    print("Test daemon active on {}".format(endpoint))
+    print("Test daemon active on {}".format(test_daemon_endpoint))
     # ✓ 4. run test daemon
 
-    print("Provisioning completed: cluster is ready to execute tests on {} at {}".format(algorithm, endpoint))
+    print("Provisioning completed: cluster is ready to execute tests on {} at {}".format(algorithm, test_daemon_endpoint))
     cluster_config_file = "masterConfig.json"  # this file will be used to tear down the cluster
     with open(cluster_config_file, "w") as out_f:
         json.dump({
             "mode": "local",
             "algorithm": algorithm,
-            "testDaemon": endpoint,
+            "testDaemon": test_daemon_endpoint,
             "nodes": cluster
         }, out_f, indent=4)
     print("Cluster configuration saved in file {}.\n".format(cluster_config_file))
@@ -164,6 +167,7 @@ def provide_gce_cluster(nodes_num, algorithm):
         while not gcs_file_exists(gcs, vm_id_file):  # acknowledge file created by startup script at the end
             sleep(2)
         gcs.objects().delete(bucket=GCS_BUCKET, object=vm_id_file).execute()  # clean up
+
     # ✓ 1.2 wait for startup scripts
 
     configure_daemons = [rpcClient('http://{}:{}'.format(node["address"], CONFIGURE_DAEMON_PORT)) for node in cluster]
@@ -173,11 +177,12 @@ def provide_gce_cluster(nodes_num, algorithm):
     # ✓ 1.3 provide node-specific configuration files
 
     # 2. run algorithm [via configure daemons]
+    test_daemon_endpoint = cluster[0]["address"] + ":" + str(TEST_DAEMON_PORT)  # arbitrarily run the test daemon on first node
     print("Going to run algorithm {} on cluster...".format(algorithm))
     if algorithm == "pso":
         pass
     elif algorithm == "paxos":
-        configure_paxos_gce(cluster, configure_daemons)
+        configure_paxos_gce(cluster, configure_daemons, test_daemon_endpoint)
     elif algorithm == "rethinkdb":
         configure_rethinkdb_gce(cluster, configure_daemons)
     # ✓ 2. run algorithm [via configure daemons]
@@ -196,19 +201,18 @@ def provide_gce_cluster(nodes_num, algorithm):
     # ✓ 3. run network managers
 
     # 4. run test daemon [via configure daemon]
-    endpoint = cluster[0]["address"] + ":" + str(TEST_DAEMON_PORT)  # arbitrarily run the test daemon on first node
-    print("Running the test daemon on {}...".format(endpoint))
+    print("Running the test daemon on {}...".format(test_daemon_endpoint))
     configure_daemons[0].run_test_daemon(algorithm, cluster[0]["port"])
-    print("Test daemon active on {}".format(endpoint))
+    print("Test daemon active on {}".format(test_daemon_endpoint))
     # ✓ 4. run test daemon
 
-    print("Provisioning completed: cluster is ready to execute tests on {} at {}".format(algorithm, endpoint))
+    print("Provisioning completed: cluster is ready to execute tests on {} at {}".format(algorithm, test_daemon_endpoint))
     cluster_config_file = "masterConfig.json"  # this file will be used to tear down the cluster
     with open(cluster_config_file, "w") as out_f:
         json.dump({
             "mode": "gce",
             "algorithm": algorithm,
-            "testDaemon": endpoint,
+            "testDaemon": test_daemon_endpoint,
             "nodes": cluster
         }, out_f, indent=4)
     print("Cluster configuration saved in file {}.\n".format(cluster_config_file))
@@ -334,14 +338,22 @@ def upload_object(gcs, file_path, file_name):
 
 # algorithm utility
 
-def configure_paxos_local(cluster, node_file_path):
-    for node in cluster:
+def configure_paxos_local(cluster, node_file_path, test_daemon):
+    # the first Paxos node must be configured to send callbacks to test daemon
+    print("Running Paxos node at {}:{}...".format(cluster[0]["address"], cluster[0]["port"]))
+    print(run_paxos_node(cluster[0]["port"], node_file_path.format(cluster[0]["id"]), test_daemon))
+    # the others don't have to send callbacks
+    for node in cluster[1:]:
         print("Running Paxos node at {}:{}...".format(node["address"], node["port"]))
         print(run_paxos_node(node["port"], node_file_path.format(node["id"])))
 
 
-def configure_paxos_gce(cluster, configure_daemons):
-    for (i, node) in enumerate(cluster):
+def configure_paxos_gce(cluster, configure_daemons, test_daemon):
+    # the first Paxos node must be configured to send callbacks to test daemon
+    print("Running Paxos node at {}:{}...".format(cluster[0]["address"], cluster[0]["port"]))
+    print(configure_daemons[0].run_paxos_node(cluster[0]["port"], LOCAL_NODE_CONF_FILE, test_daemon))
+    # the others don't have to send callbacks
+    for (i, node) in enumerate(cluster[1:], start=1):
         print("Running Paxos node at {}:{}...".format(node["address"], node["port"]))
         print(configure_daemons[i].run_paxos_node(node["port"], LOCAL_NODE_CONF_FILE))
 
