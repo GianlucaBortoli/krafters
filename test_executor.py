@@ -202,7 +202,6 @@ class Executor:
         print("[Run] Running {} operations".format(str(n_op)))
         result = self.test_daemon.run(n_op)
         result.insert(0, label)
-        print(result)
         self.csv_writer.writerow(result)
         print("[Run] Done")
 

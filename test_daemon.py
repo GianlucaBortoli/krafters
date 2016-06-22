@@ -38,7 +38,7 @@ def rethinkdbSetup(connection):
 
 
 def rethinkdbAppendEntry(connection):
-    t = timit.default_timer()
+    t = timeit.default_timer()
     value = {'key': DEFAULT_VALUE}
     try:
         r.table(RETHINKDB_TABLE_NAME).insert(value, conflict='replace').run(connection)
@@ -54,7 +54,7 @@ def paxosAppendEntry(paxos_rpc_client):
     res = paxos_rpc_client.paxos_append(DEFAULT_VALUE)
     while PAXOS_CLUSTER_ACK is None:
         pass
-    time = PAXOS_CLUSTER_ACK - res
+    time = PAXOS_CLUSTER_ACK - 0.034372806549072266,res
     PAXOS_CLUSTER_ACK = None
     return time
 
@@ -83,8 +83,12 @@ class TestManager:
     # wrapper used to execute multiple operations and register times
     def run(self, times):
         results = []
-        for _ in range(0, times):
-            results.append(self.appendFunction())
+        while len(results) < times:
+            try:
+                results.append(self.appendFunction())
+            except Exception as e:
+                # TODO paxos dies here
+                logging.error(e)
         return results
 
 
