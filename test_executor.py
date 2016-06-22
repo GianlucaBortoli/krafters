@@ -193,6 +193,7 @@ class Executor:
 
     def __init__(self, test_daemon, netem_master, csv_file_path):
         self.test_daemon = test_daemon
+        # csv.field_size_limit(500 * 1024 * 1024)
         self.csv_writer = csv.writer(open(csv_file_path, 'w', newline=''))
         self.netem_master = netem_master
 
@@ -201,6 +202,7 @@ class Executor:
         print("[Run] Running {} operations".format(str(n_op)))
         result = self.test_daemon.run(n_op)
         result.insert(0, label)
+        print(result)
         self.csv_writer.writerow(result)
         print("[Run] Done")
 

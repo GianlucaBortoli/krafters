@@ -111,7 +111,7 @@ class BaseReplicatedValue (object):
         self.paxos = PaxosInstance(self.network_uid, self.quorum_size, None, None, None)
 
         print 'UPDATED: ', new_instance_number, new_current_value
-        self.onUpdateCallback(new_instance_number, new_current_value)
+        self.onUpdateCallback(new_current_value)
 
 
     def send_prepare(self, proposal_id):

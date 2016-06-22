@@ -24,10 +24,7 @@ LOCAL_NODE_CONF_FILE = "node_conf.json"
 
 def run_test_daemon(algorithm, algorithm_port):
     file_path = os.path.dirname(os.path.abspath(__file__)).replace(" ", "\ ")
-    if algorithm in ["rethinkdb"]:
-        cmd = "python3.4 {}/test_daemon.py '' {} {} &".format(file_path, algorithm, algorithm_port)
-    else:
-        cmd = "python2.7 {}/test_daemon2.py '' {} {} &".format(file_path, algorithm, algorithm_port)
+    cmd = "python3.4 {}/test_daemon.py '' {} {} &".format(file_path, algorithm, algorithm_port)
     subprocess.Popen(cmd, shell=True, stdout=DEVNULL).communicate()  # process is run in background
     wait_for_ports([TEST_DAEMON_PORT], 0.5)
     print("Test daemon process started")
@@ -61,9 +58,12 @@ def download_node_config():
 
 # Paxos functions
 
-def run_paxos_node(port, node_config_file):
-    command = ["./paxos/custom_server.py", node_config_file]  # TODO check if sudo must be added
-    subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)  # process is run asynchronously
+def run_paxos_node(port, node_config_file, test_daemon=None):
+    if test_daemon:
+        cmd = "./paxos/custom_server.py {} {} &".format(node_config_file, test_daemon)
+    else:
+        cmd = "./paxos/custom_server.py {} &".format(node_config_file)
+    subprocess.Popen(cmd, shell=True, stdout=DEVNULL).communicate()
     wait_for_ports([port], 0.3, tcp=False)
     return "Paxos node started"
 
