@@ -97,9 +97,9 @@ class CommandUnwrapper:
         self.executor = executor
         self.local_execution = local_execution
 
-    def run_command(self, n_op):
+    def run_command(self, n_op, label):
         # no bound in operation number
-        return partial(self.executor.run_command, n_op)
+        return partial(self.executor.run_command, n_op, label)
 
     # checks if ids are valid
     def modify_link_from_to(self, sources, targets, netem_command, bidirectional):
@@ -197,9 +197,10 @@ class Executor:
         self.netem_master = netem_master
 
     # calls run function on test_daemon and saves results to csv
-    def run_command(self, n_op):
+    def run_command(self, n_op, label):
         print("[Run] Running {} operations".format(str(n_op)))
         result = self.test_daemon.run(n_op)
+        result.insert(0, label)
         self.csv_writer.writerow(result)
         print("[Run] Done")
 
@@ -214,7 +215,7 @@ class Parser:
             " *from +(all +|(([0-9]+|rand) +)+)to +(all +|(([0-9]+|rand) +)+)(bidirectional +)?set +[a-z]+.*")
     modify_random_link_pattern = re.compile(" *on +[0-9]+ +connections? +(bidirectional +)?set +[a-z]+.*")
     reset_pattern = re.compile(" *reset *")
-    run_pattern = re.compile(" *run +[0-9]+ *")
+    run_pattern = re.compile(" *run +[0-9]+( +[A-Za-z_]+)? *")
     do_pattern = re.compile(" *do *")
     times_pattern = re.compile(" *[0-9]+ +times? *")
 
@@ -235,6 +236,10 @@ class Parser:
         if operation_name == "run":
             tokens = test_line.split()
             params["nop"] = tokens[1]
+            if(len(tokens)>2):
+                params["label"] = tokens[2]
+            else:
+                params["label"] = "no_name"
         elif operation_name == "link":
             netem_command = test_line.split("set")[1]
             first_part = test_line.split("set")[0]
@@ -294,7 +299,7 @@ class Parser:
                 elif self.run_pattern.match(test_line):
                     params = self.get_params(test_line, "run")
                     function = self.command_checker.run_command
-                    arguments = [int(params["nop"])]
+                    arguments = [int(params["nop"]), params["label"]]
                 elif self.do_pattern.match(test_line):
                     do_open += 1
                     if len(pointers) < do_open + 1:
