@@ -59,7 +59,7 @@ def generateMassPlot(test):
 
 def main():
     argument_parser = argparse.ArgumentParser(description="Generates graph from test csv")
-    argument_parser.add_argument("result_csv", type=str,
+    argument_parser.add_argument("result_csv", type=str, nargs="*",
                                  help="path to test.csv file")
     argument_parser.add_argument("-t", "--type", type=str, choices=PLOT_TYPES, dest="type", default="raw",
                                  help="type of graph to print")
@@ -71,12 +71,21 @@ def main():
 
     data_series = []
     try:
-        with open(args.result_csv, "r") as f:
-            rdr = csv.reader(f, delimiter=',', quotechar='|')
-            for row in rdr:
-                data_series.append(row)
+        for result_csv in args.result_csv:
+            with open(result_csv, "r") as f:
+                rdr = csv.reader(f, delimiter=',', quotechar='|')
+                for row in rdr:
+                    data_series.append(row)
     except FileNotFoundError as e:
         print("File '{}' not found".format(args.result_csv))
+
+    if not args.output_file_path:
+        if len(args.result_csv) >1 :
+            print("You must specify a output file name if you are printing a multiple file graph!")
+            exit(1)
+        output_file = args.result_csv[0]+".png"
+    else:
+        output_file = args.output_file_path
 
     if args.type == "raw":
         generateRawPlot(data_series)
@@ -85,14 +94,9 @@ def main():
     else:
         generateMassPlot(data_series)
 
-    if not args.output_file_path:
-        output_file = args.result_csv+".png"
-    else:
-        output_file = args.output_file_path
-
     plt.savefig(output_file)
 
-    if(args.s):
+    if args.s:
         plt.show()
 
 

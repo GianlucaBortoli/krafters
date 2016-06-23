@@ -53,7 +53,7 @@ def download_node_config():
     print("GCS bucket: {}".format(bucket))
     command = ["sudo", "gsutil", "cp", "gs://{}/{}".format(bucket, gcs_node_conf_file), LOCAL_NODE_CONF_FILE]
     subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
-    print("GCS file download completed")
+    return "GCS file download completed {}".format(gcs_node_conf_file)
 
 
 # PSO functions

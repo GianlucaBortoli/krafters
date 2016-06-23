@@ -190,18 +190,20 @@ class Executor:
     test_daemon = {}
     csv_writer = {}
     netem_master = {}
+    algorithm = ""
 
-    def __init__(self, test_daemon, netem_master, csv_file_path):
+    def __init__(self, test_daemon, netem_master, csv_file_path, algorithm):
         self.test_daemon = test_daemon
         # csv.field_size_limit(500 * 1024 * 1024)
         self.csv_writer = csv.writer(open(csv_file_path, 'w', newline=''))
         self.netem_master = netem_master
+        self.algorithm = algorithm
 
     # calls run function on test_daemon and saves results to csv
     def run_command(self, n_op, label):
         print("[Run] Running {} operations".format(str(n_op)))
         result = self.test_daemon.run(n_op)
-        result.insert(0, label)
+        result.insert(0, "{}_{}".format(self.algorithm, label))
         self.csv_writer.writerow(result)
         print("[Run] Done")
 
@@ -374,7 +376,7 @@ def main():
         exit(1)
 
     # Sets output file path
-    output_file_path = args.test_file_path + ".csv"
+    output_file_path = "{}_{}.csv".format(args.test_file_path, str(conf["algorithm"]))
     if args.output_file_path:
         output_file_path = args.output_file_path
 
@@ -383,7 +385,7 @@ def main():
         print("[Configuration Error] nodes have not been specified correctly on '{}' configuration file".format(
             args.config_file_path))
         exit(2)
-    executor = Executor(test_daemon, netem_master, output_file_path)
+    executor = Executor(test_daemon, netem_master, output_file_path, str(conf["algorithm"]))
     command_checker = CommandUnwrapper(len(conf["nodes"]), executor, conf["mode"] == "local")
     test_parser = Parser(command_checker)
 

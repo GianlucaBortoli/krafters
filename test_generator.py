@@ -62,8 +62,8 @@ class Test:
     def set_loss(self, loss, sources=NodeGroup.all(), targets=NodeGroup.all(), bidirectional=False):
         self.test_lines.append(self.from_to_command(sources, targets, bidirectional, "loss {}%".format(str(loss))))
 
-    # other functions here!
-
+    def set_rule(self, rule, sources=NodeGroup.all(), targets=NodeGroup.all(), bidirectional=False):
+         self.test_lines.append(self.from_to_command(sources, targets, bidirectional, rule))
     def partition(self, group1, group2):
         self.set_loss(100, group1, group2, True)
 
@@ -89,29 +89,37 @@ class Test:
         for line in self.test_lines:
             file.write(bytes("{}\n".format(str(line)),"UTF-8"))
 
+def test_on_each_one(nodes_number, rule, nop=10000, path="./"):
+    test = Test()
+    for i in range(1,nodes_number+1):
+        test.reset()
+        test.set_rule(rule, targets=str(Node(i)))
+        test.run(nop)
+    test.print_to_file("{}{}_each_{}_nodes".format(path, rule.replace(" ", "_"),str(nodes_number)))
 
 def main():
+    test_on_each_one(5, "delay 100ms", path="final_tests/")
     # example program
-    partition1 = NodeGroup([Node(1), Node.random()])
-
-    partition2 = NodeGroup()
-    partition2.add(Node(2))
-    partition2.add(Node.random())
-
-    partition_test = Test()
-    partition_test.partition(partition1, partition2)
-    partition_test.run(100)
-
-    complete_test = Test()
-    complete_test.repeat(partition_test, 5)
-    complete_test.reset()
-    complete_test.set_delay(100)
-    complete_test.run(100)
-    complete_test.set_loss(40, Node.random(), NodeGroup.all())
-    complete_test.run(100)
-    complete_test.repeat_all(3)
-
-    complete_test.print_to_file("test.test")
+    # partition1 = NodeGroup([Node(1), Node.random()])
+    #
+    # partition2 = NodeGroup()
+    # partition2.add(Node(2))
+    # partition2.add(Node.random())
+    #
+    # partition_test = Test()
+    # partition_test.partition(partition1, partition2)
+    # partition_test.run(100)
+    #
+    # complete_test = Test()
+    # complete_test.repeat(partition_test, 5)
+    # complete_test.reset()
+    # complete_test.set_delay(100)
+    # complete_test.run(100)
+    # complete_test.set_loss(40, Node.random(), NodeGroup.all())
+    # complete_test.run(100)
+    # complete_test.repeat_all(3)
+    #
+    # complete_test.print_to_file("test.test")
 
 
 

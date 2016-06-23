@@ -200,6 +200,10 @@ def provide_gce_cluster(nodes_num, algorithm):
     # 3. run network managers [via configure daemons]
     print("Running network manager on every node...")
     for node in cluster:
+        node_config_file = "/tmp/" + config_file_template.format(node["vmID"])
+        with open(node_config_file, "w") as out_f:
+            json.dump(get_node_config(cluster, node), out_f, indent=4)
+        upload_object(gcs, node_config_file, config_dir + config_file_template.format(node["vmID"]))  # send file to VM
         configure_daemons[node["id"] - 1].run_network_manager()
         # this rpc will download the node-specific configuration file from gs and run the network manager
         # each node can discover its configuration file by querying its own metadata

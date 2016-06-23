@@ -1,0 +1,3 @@
+reset
+from all to all set loss 10%
+run 2000 loss_10
