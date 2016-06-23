@@ -91,6 +91,8 @@ class TestManager:
             rethinkdb_setup(self.rdb_connection)
             self.appendFunction = partial(rethinkdb_append_entry, self.rdb_connection)
         elif algorithm == "paxos" or algorithm == "pso":
+            if algorithm_host == '\'\'' or algorithm_host == '':
+                algorithm_host = '127.0.0.1'
             self.cluster_rpc_client = ServerProxy("http://{}:{}".format(algorithm_host, CLUSTER_APPEND_PORT),
                                                   allow_none=True)
             self.appendFunction = partial(cluster_append_entry, self.cluster_rpc_client)
@@ -109,8 +111,6 @@ class TestManager:
 
 
 def run_test_server(server_port, algorithm, algorithm_port):
-    if server_port == '\'\'' or server_port == '':
-        server_port = '127.0.0.1'
     logging.basicConfig(filename='test_daemon_debug.log', level=logging.DEBUG)
     server = MultiThreadXMLRPCServer((server_port, TEST_DAEMON_PORT), allow_none=True)
     test_manager = TestManager(server_port, algorithm, algorithm_port)

@@ -83,7 +83,7 @@ def main():
     else:
         callback = partial(noop)
 
-    node = configuration["host"]["address"] + ":" + str(configuration["host"]["port"])
+    node = "127.0.0.1:" + str(configuration["host"]["port"])
     print node
     peers = [peer["address"] + ":" + str(peer["port"]) for peer in configuration["peers"]]
     print peers

@@ -31,7 +31,7 @@ GCE_REGION_ID = "us-central1"
 GCE_ZONE_ID = "us-central1-c"
 GCE_INSTANCE_TYPE = "n1-standard-1"
 GCE_OS_PROJECT = "ubuntu-os-cloud"
-GCE_OS_FAMILY = "ubuntu-1204-lts"
+GCE_OS_FAMILY = "ubuntu-1510"
 GCE_FIREWALL_RULE_NAME = "allow-all-tcp-udp"
 
 CONSENSUS_ALGORITHM_PORT = 12348
@@ -137,7 +137,7 @@ def provide_gce_cluster(nodes_num, algorithm):
                     "address": result["networkInterfaces"][0]["accessConfigs"][0]["natIP"],  # ephemeral external IP
                     "port": CONSENSUS_ALGORITHM_PORT,
                     "rpcPort": NETWORK_MANAGER_PORT,
-                    "interface": result["networkInterfaces"][0]["name"],  # network interface name is usually nic0
+                    "interface": "eth0",
                     "vmID": vm_ids[i]
                 }
                 print("Adding node to the configuration: {}".format(new_node))
