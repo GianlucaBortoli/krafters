@@ -174,7 +174,7 @@ def provide_gce_cluster(nodes_num, algorithm):
     configure_daemons = [rpcClient('http://{}:{}'.format(node["address"], CONFIGURE_DAEMON_PORT)) for node in cluster]
     # 1.3 provide node-specific configuration files [via configure daemons]
     for configure_daemon in configure_daemons:
-        configure_daemon.download_node_config()
+        print(configure_daemon.download_node_config())
     # ✓ 1.3 provide node-specific configuration files
 
     # 2. run algorithm [via configure daemons]

@@ -32,7 +32,7 @@ def run_test_daemon(algorithm, algorithm_port):
 
 def run_network_manager():
     # ensure this function is called only when the node can access its configuration file
-    command = ["sudo", "./network_manager.py", "/" + LOCAL_NODE_CONF_FILE]
+    command = ["sudo", "./network_manager.py", LOCAL_NODE_CONF_FILE]
     subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)  # process is run asynchronously
     wait_for_ports([NETWORK_MANAGER_PORT], 0.3)
     print("Network manager started")
@@ -51,9 +51,9 @@ def download_node_config():
     out, _ = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
     bucket = out.decode("utf-8")
     print("GCS bucket: {}".format(bucket))
-    command = ["sudo", "gsutil", "cp", "gs://{}/{}".format(bucket, gcs_node_conf_file), "/" + LOCAL_NODE_CONF_FILE]
+    command = ["sudo", "gsutil", "cp", "gs://{}/{}".format(bucket, gcs_node_conf_file), LOCAL_NODE_CONF_FILE]
     subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
-    print("GCS file download completed")
+    return "GCS file download completed {}".format(gcs_node_conf_file)
 
 
 # PSO functions
