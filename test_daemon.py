@@ -17,8 +17,8 @@ DEFAULT_VALUE = "value"
 RETHINKDB_DB_NAME = 'test'
 RETHINKDB_TABLE_NAME = 'test'
 
-PAXOS_CLUSTER_ACK = None
-PAXOS_APPEND_PORT = 12366
+CLUSTER_ACK = None
+CLUSTER_APPEND_PORT = 12366
 
 
 class MultiThreadXMLRPCServer(ThreadingMixIn, SimpleXMLRPCServer):
@@ -27,7 +27,7 @@ class MultiThreadXMLRPCServer(ThreadingMixIn, SimpleXMLRPCServer):
     '''
 
 
-def rethinkdbSetup(connection):
+def rethinkdb_setup(connection):
     try:
         # r.db_create(RETHINKDB_DB_NAME).run(connection)
         logging.info("Database {} created".format(RETHINKDB_DB_NAME))
@@ -37,7 +37,7 @@ def rethinkdbSetup(connection):
         logging.warning('Database {} already exists'.format(RETHINKDB_DB_NAME))
 
 
-def rethinkdbAppendEntry(connection):
+def rethinkdb_append_entry(connection):
     t = timeit.default_timer()
     value = {'key': DEFAULT_VALUE}
     try:
@@ -49,19 +49,19 @@ def rethinkdbAppendEntry(connection):
         return timeit.default_timer() - t
 
 
-def paxosAppendEntry(paxos_rpc_client):
-    global PAXOS_CLUSTER_ACK
-    res = paxos_rpc_client.paxos_append(DEFAULT_VALUE)
-    while PAXOS_CLUSTER_ACK is None:
+def cluster_append_entry(cluster_rpc_client):
+    global CLUSTER_ACK
+    res = cluster_rpc_client.append_entry(DEFAULT_VALUE)
+    while CLUSTER_ACK is None:
         pass
-    time = PAXOS_CLUSTER_ACK - 0.034372806549072266,res
-    PAXOS_CLUSTER_ACK = None
+    time = CLUSTER_ACK - res
+    CLUSTER_ACK = None
     return time
 
 
-def paxos_append_complete(new_current_value, time):
-    global PAXOS_CLUSTER_ACK
-    PAXOS_CLUSTER_ACK = time
+def cluster_append_complete(new_current_value, time):
+    global CLUSTER_ACK
+    CLUSTER_ACK = time
     return None
 
 
@@ -74,11 +74,11 @@ class TestManager:
         if algorithm == "rethinkdb":
             self.rdb_connection = r.connect('localhost', self.algorithm_port)
             logging.info("Connection with RethinkDB successful")
-            rethinkdbSetup(self.rdb_connection)
-            self.appendFunction = partial(rethinkdbAppendEntry, self.rdb_connection)
-        elif algorithm == "paxos":
-            self.paxos_rpc_client = ServerProxy("http://{}:{}".format(algorithm_host, PAXOS_APPEND_PORT))
-            self.appendFunction = partial(paxosAppendEntry, self.paxos_rpc_client)
+            rethinkdb_setup(self.rdb_connection)
+            self.appendFunction = partial(rethinkdb_append_entry, self.rdb_connection)
+        elif algorithm == "paxos" or algorithm == "pso":
+            self.cluster_rpc_client = ServerProxy("http://{}:{}".format(algorithm_host, CLUSTER_APPEND_PORT), allow_none=True)
+            self.appendFunction = partial(cluster_append_entry, self.cluster_rpc_client)
 
     # wrapper used to execute multiple operations and register times
     def run(self, times):
@@ -100,7 +100,7 @@ def run_test_server(server_port, algorithm, algorithm_port):
     server = MultiThreadXMLRPCServer((server_port, TEST_DAEMON_PORT), allow_none=True)
     test_manager = TestManager(server_port, algorithm, algorithm_port)
     server.register_function(test_manager.run, "run")
-    server.register_function(paxos_append_complete, "paxos_append_complete")
+    server.register_function(cluster_append_complete, "cluster_append_complete")
     server.serve_forever()
 
 

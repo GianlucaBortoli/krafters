@@ -27,7 +27,7 @@ PAXOS_APPEND_PORT = 12366
 def onUpdateFunction(test_daemon_client, new_current_value):
     print "CALLBACK: ", new_current_value
     t = timeit.default_timer()
-    test_daemon_client.paxos_append_complete(new_current_value, t)
+    test_daemon_client.cluster_append_complete(new_current_value, t)
 
 
 def noop(new_current_value):
@@ -42,7 +42,7 @@ class TestDaemonListener:
 
     def run(self):
         server = SimpleXMLRPCServer(('127.0.0.1', PAXOS_APPEND_PORT), allow_none=True)
-        server.register_function(self.messenger.paxos_append, "paxos_append")
+        server.register_function(self.messenger.paxos_append, "append_entry")
         server.serve_forever()
 
 

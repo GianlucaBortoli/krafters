@@ -56,6 +56,18 @@ def download_node_config():
     print("GCS file download completed")
 
 
+# PSO functions
+
+def run_pso_node(port, node_config_file, test_daemon=None):
+    if test_daemon:
+        cmd = "./pysyncobj/custom_server.py {} {} &".format(node_config_file, test_daemon)
+    else:
+        cmd = "./pysyncobj/custom_server.py {} &".format(node_config_file)
+    subprocess.Popen(cmd, shell=True, stdout=DEVNULL).communicate()
+    wait_for_ports([port], 0.3, tcp=False)
+    return "PSO node started"
+
+
 # Paxos functions
 
 def run_paxos_node(port, node_config_file, test_daemon=None):
@@ -119,6 +131,7 @@ def main():
         server.register_function(run_test_daemon, "run_test_daemon")
         server.register_function(run_network_manager, "run_network_manager")
         server.register_function(download_node_config, "download_node_config")
+        server.register_function(run_pso_node, "run_pso_node")
         server.register_function(run_paxos_node, "run_paxos_node")
         server.register_function(configure_rethinkdb_master, "configure_rethinkdb_master")
         server.register_function(configure_rethinkdb_follower, "configure_rethinkdb_follower")

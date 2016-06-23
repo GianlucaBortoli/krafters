@@ -9,7 +9,8 @@ from googleapiclient import discovery
 from googleapiclient import http
 from test_daemon import TEST_DAEMON_PORT
 from configure_daemon import CONFIGURE_DAEMON_PORT, NETWORK_MANAGER_PORT, \
-    configure_rethinkdb_master, configure_rethinkdb_follower, run_test_daemon, run_paxos_node, LOCAL_NODE_CONF_FILE
+    configure_rethinkdb_master, configure_rethinkdb_follower, run_test_daemon, run_paxos_node, LOCAL_NODE_CONF_FILE, \
+    run_pso_node
 from xmlrpc.client import ServerProxy as rpcClient
 import argparse
 import json
@@ -68,7 +69,7 @@ def provide_local_cluster(nodes_num, algorithm):
     test_daemon_endpoint = "127.0.0.1:" + str(TEST_DAEMON_PORT)
     print("Going to run algorithm {} on cluster...".format(algorithm))
     if algorithm == "pso":
-        pass
+        configure_pso_local(cluster, node_file_path, test_daemon_endpoint)
     elif algorithm == "paxos":
         configure_paxos_local(cluster, node_file_path, test_daemon_endpoint)
     elif algorithm == "rethinkdb":
@@ -180,7 +181,7 @@ def provide_gce_cluster(nodes_num, algorithm):
     test_daemon_endpoint = cluster[0]["address"] + ":" + str(TEST_DAEMON_PORT)  # arbitrarily run the test daemon on first node
     print("Going to run algorithm {} on cluster...".format(algorithm))
     if algorithm == "pso":
-        pass
+        configure_pso_gce(cluster, configure_daemons, test_daemon_endpoint)
     elif algorithm == "paxos":
         configure_paxos_gce(cluster, configure_daemons, test_daemon_endpoint)
     elif algorithm == "rethinkdb":
@@ -338,6 +339,26 @@ def upload_object(gcs, file_path, file_name):
 
 # algorithm utility
 
+def configure_pso_local(cluster, node_file_path, test_daemon):
+    # the first PSO node must be configured to send callbacks to test daemon
+    print("Running PSO node at {}:{}...".format(cluster[0]["address"], cluster[0]["port"]))
+    print(run_pso_node(cluster[0]["port"], node_file_path.format(cluster[0]["id"]), test_daemon))
+    # the others don't have to send callbacks
+    for node in cluster[1:]:
+        print("Running PSO node at {}:{}...".format(node["address"], node["port"]))
+        print(run_pso_node(node["port"], node_file_path.format(node["id"])))
+
+
+def configure_pso_gce(cluster, configure_daemons, test_daemon):
+    # the first PSO node must be configured to send callbacks to test daemon
+    print("Running PSO node at {}:{}...".format(cluster[0]["address"], cluster[0]["port"]))
+    print(configure_daemons[0].run_pso_node(cluster[0]["port"], LOCAL_NODE_CONF_FILE, test_daemon))
+    # the others don't have to send callbacks
+    for (i, node) in enumerate(cluster[1:], start=1):
+        print("Running PSO node at {}:{}...".format(node["address"], node["port"]))
+        print(configure_daemons[i].run_pso_node(node["port"], LOCAL_NODE_CONF_FILE))
+
+
 def configure_paxos_local(cluster, node_file_path, test_daemon):
     # the first Paxos node must be configured to send callbacks to test daemon
     print("Running Paxos node at {}:{}...".format(cluster[0]["address"], cluster[0]["port"]))
@@ -404,20 +425,14 @@ def main():
     args = parser.parse_args()
     print("Going to deploy a cluster of {} nodes on {}. Please wait...".format(args.nodes, args.mode))
 
-    try:
-        p = subprocess.Popen("sudo echo",
-                                 stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE,
-                                 shell=True)
-        out, err = p.communicate()
-        if err:
-            raise Exception()
-    except:
-        print("You must execute this program as sudoer!")
-        exit(1)
-
-
-
+    # try:
+    #     p = subprocess.Popen("sudo echo", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    #     out, err = p.communicate()
+    #     if err:
+    #         raise Exception()
+    # except:
+    #     print("You must execute this program as sudoer!")
+    #     exit(1)
 
     # Provisioning steps:
     # 1. spin machines (possibly running a configure daemon on each of them)
