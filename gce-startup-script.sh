@@ -2,10 +2,12 @@
 
 export DEBIAN_FRONTEND=noninteractive
 pwd
-# install python3.4
+# install python3.4 and git
 sudo add-apt-repository -y ppa:fkrull/deadsnakes
 sudo apt-get update
-sudo apt-get install -y python3.4
+sudo apt-get install -y \
+    python3.4  \
+    git
 # fetch network_manager.py
 curl https://raw.githubusercontent.com/GianlucaBortoli/krafters/master/network_manager.py > network_manager.py
 sudo chmod 777 network_manager.py
@@ -29,10 +31,25 @@ sudo apt-get update && \
 
 sudo wget https://bootstrap.pypa.io/get-pip.py
 sudo python3.4 get-pip.py
-sudo -H pip install rethinkdb
+sudo python2.7 get-pip.py
+sudo -H pip3.4 install rethinkdb
 
 # notify provisioner script is executed
 instance=$(sudo curl http://metadata.google.internal/computeMetadata/v1/instance/attributes/myid -H "Metadata-Flavor: Google")
 bucket=$(sudo curl http://metadata.google.internal/computeMetadata/v1/instance/attributes/bucket -H "Metadata-Flavor: Google")
 sudo echo > $instance
+
+# clone our repo & copy paxos/PSO
+git clone https://github.com/GianlucaBortoli/krafters.git
+mv ./krafters/paxos .
+mv ./krafters/pysyncobj .
+rm -rf ./krafters
+
+# install paxos/PSO dependencies
+sudo -H pip2.7 install \
+    essential-paxos \
+    paxos
+sudo -H pip2.7 install pysyncobj
+
+# notify we're done
 gsutil cp $instance gs://$bucket/$instance
