@@ -20,7 +20,7 @@ import sys
 
 MAX_CLUSTER_NODES = 8  # default CPU-quota on GCE
 CLUSTER_MODES = ["local", "gce"]
-CONSENSUS_ALGORITHMS = ["pso", "rethinkdb", "paxos"]
+CONSENSUS_ALGORITHMS = ["pso", "paxos", "rethinkdb", "datastore"]
 
 # TODO ENSURE YOU ARE SUDO BOTH HERE AND IN TEAR_DOWN
 # TODO UPDATE USAGE OF TEST_EXECUTOR
@@ -74,6 +74,8 @@ def provide_local_cluster(nodes_num, algorithm):
         configure_paxos_local(cluster, node_file_path, test_daemon_endpoint)
     elif algorithm == "rethinkdb":
         configure_rethinkdb_local(cluster)
+    elif algorithm == "datastore":
+        pass
     # ✓ 2. run algorithm
 
     # 3. run network managers
@@ -173,6 +175,11 @@ def provide_gce_cluster(nodes_num, algorithm):
 
     configure_daemons = [rpcClient('http://{}:{}'.format(node["address"], CONFIGURE_DAEMON_PORT)) for node in cluster]
     # 1.3 provide node-specific configuration files [via configure daemons]
+    for node in cluster:
+        node_config_file = "/tmp/" + config_file_template.format(node["vmID"])
+        with open(node_config_file, "w") as out_f:
+            json.dump(get_node_config(cluster, node), out_f, indent=4)
+        upload_object(gcs, node_config_file, config_dir + config_file_template.format(node["vmID"]))  # send file to VM
     for configure_daemon in configure_daemons:
         configure_daemon.download_node_config()
     # ✓ 1.3 provide node-specific configuration files
@@ -186,15 +193,13 @@ def provide_gce_cluster(nodes_num, algorithm):
         configure_paxos_gce(cluster, configure_daemons, test_daemon_endpoint)
     elif algorithm == "rethinkdb":
         configure_rethinkdb_gce(cluster, configure_daemons)
+    elif algorithm == "datastore":
+        pass
     # ✓ 2. run algorithm [via configure daemons]
 
     # 3. run network managers [via configure daemons]
     print("Running network manager on every node...")
     for node in cluster:
-        node_config_file = "/tmp/" + config_file_template.format(node["vmID"])
-        with open(node_config_file, "w") as out_f:
-            json.dump(get_node_config(cluster, node), out_f, indent=4)
-        upload_object(gcs, node_config_file, config_dir + config_file_template.format(node["vmID"]))  # send file to VM
         configure_daemons[node["id"] - 1].run_network_manager()
         # this rpc will download the node-specific configuration file from gs and run the network manager
         # each node can discover its configuration file by querying its own metadata
@@ -420,8 +425,8 @@ def main():
                         help="cluster nodes number")
     parser.add_argument("-m", "--mode", type=str, choices=CLUSTER_MODES, dest="mode", default="local",
                         help="cluster node location")
-    parser.add_argument("-a", "--algorithm", type=str, choices=CONSENSUS_ALGORITHMS, dest="algorithm", default="pso",
-                        help="consensus algorithm")
+    parser.add_argument("-a", "--algorithm", type=str, choices=CONSENSUS_ALGORITHMS, dest="algorithm",
+                        default="datastore", help="consensus algorithm")
     args = parser.parse_args()
     print("Going to deploy a cluster of {} nodes on {}. Please wait...".format(args.nodes, args.mode))
 

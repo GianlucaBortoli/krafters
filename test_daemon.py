@@ -27,6 +27,11 @@ class MultiThreadXMLRPCServer(ThreadingMixIn, SimpleXMLRPCServer):
     '''
 
 
+# class Item(ndb.Model):
+#     value = ndb.StringProperty(indexed=False)
+#     date = ndb.DateTimeProperty(auto_now_add=True)
+
+
 def rethinkdb_setup(connection):
     try:
         # r.db_create(RETHINKDB_DB_NAME).run(connection)
@@ -47,6 +52,15 @@ def rethinkdb_append_entry(connection):
         logging.error('{} not added'.format(value))
     finally:
         return timeit.default_timer() - t
+
+
+def datastore_append_entry():
+    pass
+    # try:
+    #     Item(value=DEFAULT_VALUE).put()
+    # except Exception as e:
+    #     logging.warning("Unable to store data on Datastore.")
+    #     logging.warning(e)
 
 
 def cluster_append_entry(cluster_rpc_client):
@@ -77,8 +91,11 @@ class TestManager:
             rethinkdb_setup(self.rdb_connection)
             self.appendFunction = partial(rethinkdb_append_entry, self.rdb_connection)
         elif algorithm == "paxos" or algorithm == "pso":
-            self.cluster_rpc_client = ServerProxy("http://{}:{}".format(algorithm_host, CLUSTER_APPEND_PORT), allow_none=True)
+            self.cluster_rpc_client = ServerProxy("http://{}:{}".format(algorithm_host, CLUSTER_APPEND_PORT),
+                                                  allow_none=True)
             self.appendFunction = partial(cluster_append_entry, self.cluster_rpc_client)
+        elif algorithm == "datastore":
+            self.appendFunction = partial(datastore_append_entry)
 
     # wrapper used to execute multiple operations and register times
     def run(self, times):
@@ -87,7 +104,6 @@ class TestManager:
             try:
                 results.append(self.appendFunction())
             except Exception as e:
-                # TODO paxos dies here
                 logging.error(e)
         return results
 
@@ -96,7 +112,6 @@ def run_test_server(server_port, algorithm, algorithm_port):
     if server_port == '\'\'' or server_port == '':
         server_port = '127.0.0.1'
     logging.basicConfig(filename='test_daemon_debug.log', level=logging.DEBUG)
-    # server = SimpleXMLRPCServer((server_port, TEST_DAEMON_PORT), allow_none=True)
     server = MultiThreadXMLRPCServer((server_port, TEST_DAEMON_PORT), allow_none=True)
     test_manager = TestManager(server_port, algorithm, algorithm_port)
     server.register_function(test_manager.run, "run")
