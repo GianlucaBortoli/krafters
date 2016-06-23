@@ -1,0 +1,3 @@
+reset
+run 1000 clean_run_1
+run 1000 clean_run_2

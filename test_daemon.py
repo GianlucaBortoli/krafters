@@ -54,7 +54,7 @@ def paxosAppendEntry(paxos_rpc_client):
     res = paxos_rpc_client.paxos_append(DEFAULT_VALUE)
     while PAXOS_CLUSTER_ACK is None:
         pass
-    time = PAXOS_CLUSTER_ACK - 0.034372806549072266,res
+    time = PAXOS_CLUSTER_ACK - res
     PAXOS_CLUSTER_ACK = None
     return time
 

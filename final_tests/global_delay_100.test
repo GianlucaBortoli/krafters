@@ -1,0 +1,3 @@
+reset
+from all to all set delay 100ms
+run 2000
