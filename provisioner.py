@@ -63,7 +63,7 @@ def provide_local_cluster(nodes_num, algorithm):
     node_file_path = "/tmp/provision_node_{}_config.json"
     for node in cluster:
         with open(node_file_path.format(node["id"]), "w") as out_f:
-            json.dump(get_node_config(cluster, node), out_f, indent=4)
+            json.dump(get_node_config(cluster, node, "local"), out_f, indent=4)
     # ✓ 1.1 provide node-specific configuration files
 
     # 2. run algorithm [no need to run a configure daemon on localhost]
@@ -172,18 +172,17 @@ def provide_gce_cluster(nodes_num, algorithm):
         while not gcs_file_exists(gcs, vm_id_file):  # acknowledge file created by startup script at the end
             sleep(2)
         gcs.objects().delete(bucket=GCS_BUCKET, object=vm_id_file).execute()  # clean up
-
     # ✓ 1.2 wait for startup scripts
 
-    configure_daemons = [rpcClient('http://{}:{}'.format(node["address"], CONFIGURE_DAEMON_PORT)) for node in cluster]
     # 1.3 provide node-specific configuration files [via configure daemons]
+    configure_daemons = [rpcClient('http://{}:{}'.format(node["address"], CONFIGURE_DAEMON_PORT)) for node in cluster]
     for node in cluster:
         node_config_file = "/tmp/" + config_file_template.format(node["vmID"])
         with open(node_config_file, "w") as out_f:
             if algorithm == "rethinkdb":
-                node_conf = get_node_config(cluster, node, additional_ports=[GCE_RETHINKDB_PORTS["cluster_port"]])
+                node_conf = get_node_config(cluster, node, "gce", additional_ports=[GCE_RETHINKDB_PORTS["cluster_port"]])
             else:
-                node_conf = get_node_config(cluster, node)
+                node_conf = get_node_config(cluster, node, "gce")
             json.dump(node_conf, out_f, indent=4)
         upload_object(gcs, node_config_file, config_dir + config_file_template.format(node["vmID"]))  # send file to VM
     for configure_daemon in configure_daemons:
@@ -206,10 +205,6 @@ def provide_gce_cluster(nodes_num, algorithm):
     # 3. run network managers [via configure daemons]
     print("Running network manager on every node...")
     for node in cluster:
-        node_config_file = "/tmp/" + config_file_template.format(node["vmID"])
-        with open(node_config_file, "w") as out_f:
-            json.dump(get_node_config(cluster, node), out_f, indent=4)
-        upload_object(gcs, node_config_file, config_dir + config_file_template.format(node["vmID"]))  # send file to VM
         configure_daemons[node["id"] - 1].run_network_manager()
         # this rpc will download the node-specific configuration file from gs and run the network manager
         # each node can discover its configuration file by querying its own metadata
@@ -256,10 +251,11 @@ def is_socket_free(host, port, tcp=True):
 
 # provisioner utility
 
-def get_node_config(cluster, node, additional_ports=None):
+def get_node_config(cluster, node, mode, additional_ports=None):
     if additional_ports is None:
         additional_ports = []
-    return {"interface": node["interface"],
+    return {"mode": mode,
+            "interface": node["interface"],
             "rpcPort": node["rpcPort"],
             "host": {
                 "port": node["port"],
