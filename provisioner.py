@@ -270,7 +270,7 @@ def get_node_config(cluster, node, additional_ports=None):
                 "address": peer["address"],
                 "port": peer["port"],
                 "id": peer["id"],
-                "portsToLock": peer["port"] + additional_ports} for peer in cluster if peer["id"] != node["id"]]}
+                "portsToLock": [peer["port"]] + additional_ports} for peer in cluster if peer["id"] != node["id"]]}
 
 
 def get_random_string(length):
