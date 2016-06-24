@@ -53,7 +53,8 @@ def provide_local_cluster(nodes_num, algorithm):
             "address": "127.0.0.1",
             "port": get_free_random_port(),
             "rpcPort": get_free_random_port(),
-            "interface": "lo"}
+            "interface": "lo",
+            "internalIP": "127.0.0.1"}
         print("Adding node to the configuration: {}".format(new_node))
         cluster.append(new_node)
     # ✓ 1. spin machines
@@ -62,10 +63,7 @@ def provide_local_cluster(nodes_num, algorithm):
     node_file_path = "/tmp/provision_node_{}_config.json"
     for node in cluster:
         with open(node_file_path.format(node["id"]), "w") as out_f:
-            node_conf = get_node_config(cluster, node)
-            # TODO check no secondary ports required for rdb
-            # node_conf["portsToLock"] = node_conf["portsToLock"] + []
-            json.dump(node_conf, out_f, indent=4)
+            json.dump(get_node_config(cluster, node), out_f, indent=4)
     # ✓ 1.1 provide node-specific configuration files
 
     # 2. run algorithm [no need to run a configure daemon on localhost]
@@ -141,7 +139,8 @@ def provide_gce_cluster(nodes_num, algorithm):
                     "port": CONSENSUS_ALGORITHM_PORT,
                     "rpcPort": NETWORK_MANAGER_PORT,
                     "interface": "eth0",
-                    "vmID": vm_ids[i]
+                    "vmID": vm_ids[i],
+                    "internalIP": result["networkInterfaces"][0]["networkIP"]  # internal IP
                 }
                 print("Adding node to the configuration: {}".format(new_node))
                 cluster.append(new_node)
@@ -270,6 +269,7 @@ def get_node_config(cluster, node, additional_ports=None):
                 "address": peer["address"],
                 "port": peer["port"],
                 "id": peer["id"],
+                "addressToLock": peer["internalIP"],
                 "portsToLock": [peer["port"]] + additional_ports} for peer in cluster if peer["id"] != node["id"]]}
 
 
