@@ -62,7 +62,10 @@ def provide_local_cluster(nodes_num, algorithm):
     node_file_path = "/tmp/provision_node_{}_config.json"
     for node in cluster:
         with open(node_file_path.format(node["id"]), "w") as out_f:
-            json.dump(get_node_config(cluster, node), out_f, indent=4)
+            node_conf = get_node_config(cluster, node)
+            # TODO check no secondary ports required for rdb
+            # node_conf["portsToLock"] = node_conf["portsToLock"] + []
+            json.dump(node_conf, out_f, indent=4)
     # ✓ 1.1 provide node-specific configuration files
 
     # 2. run algorithm [no need to run a configure daemon on localhost]
@@ -178,7 +181,11 @@ def provide_gce_cluster(nodes_num, algorithm):
     for node in cluster:
         node_config_file = "/tmp/" + config_file_template.format(node["vmID"])
         with open(node_config_file, "w") as out_f:
-            json.dump(get_node_config(cluster, node), out_f, indent=4)
+            if algorithm == "rethinkdb":
+                node_conf = get_node_config(cluster, node, additional_ports=[GCE_RETHINKDB_PORTS["cluster_port"]])
+            else:
+                node_conf = get_node_config(cluster, node)
+            json.dump(node_conf, out_f, indent=4)
         upload_object(gcs, node_config_file, config_dir + config_file_template.format(node["vmID"]))  # send file to VM
     for configure_daemon in configure_daemons:
         configure_daemon.download_node_config()
@@ -250,7 +257,9 @@ def is_socket_free(host, port, tcp=True):
 
 # provisioner utility
 
-def get_node_config(cluster, node):
+def get_node_config(cluster, node, additional_ports=None):
+    if additional_ports is None:
+        additional_ports = []
     return {"interface": node["interface"],
             "rpcPort": node["rpcPort"],
             "host": {
@@ -260,7 +269,8 @@ def get_node_config(cluster, node):
             "peers": [{
                 "address": peer["address"],
                 "port": peer["port"],
-                "id": peer["id"]} for peer in cluster if peer["id"] != node["id"]]}
+                "id": peer["id"],
+                "portsToLock": peer["port"] + additional_ports} for peer in cluster if peer["id"] != node["id"]]}
 
 
 def get_random_string(length):
