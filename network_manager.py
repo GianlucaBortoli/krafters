@@ -93,7 +93,7 @@ class NetemManager:
             qid = str(peer["id"])
             destination_id = id + qid + "2"
             peer_port = str(peer["port"])
-            peer_address = str(peer["address"])
+            peer_address = str(peer["addressToLock"])
             err = self.run_commands(self.create_peer_class_commands, {self.interface_token: self.interface,
                                                                       self.destination_id_token: destination_id})
             if err:

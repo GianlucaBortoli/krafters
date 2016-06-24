@@ -275,7 +275,7 @@ class Parser:
         pointers = []
         index = 0
         commands_list = []
-        test_file.append("reset")
+        # test_file.append("reset")
         while index < len(test_file):
 
             test_line = test_file[index]
