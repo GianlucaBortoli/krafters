@@ -14,6 +14,7 @@ class NetemManager:
     interface = ""
     host = {}
     peers = []
+    mode = ""
 
     interface_token = "%INTERFACE%"
     source_id_token = "%SID%"
@@ -32,18 +33,22 @@ class NetemManager:
                             "sudo tc -s qdisc ls dev %INTERFACE%"]
     create_peer_class_commands = ["sudo tc class add dev %INTERFACE% parent 1: classid 1:%DID% htb rate " + bandwidth]
     create_peer_qdisc_commands = ["sudo tc qdisc add dev %INTERFACE% parent 1:%DID% handle %DID%: netem delay 0ms"]
-    create_peer_filter_commands = [
+    create_peer_filter_commands_local = [
         "sudo tc filter add dev %INTERFACE% protocol ip u32 " +
         "match ip dport %PPORT% 0xffff " +
+        "flowid 1:%DID%"]
+    create_peer_filter_commands_gce = [
+        "sudo tc filter add dev %INTERFACE% protocol ip u32 " +
         "match ip dst %PADDRESS%/32 " +
         "flowid 1:%DID%"]
     modify_outgoing_connections_commands = ["sudo tc qdisc change dev %INTERFACE% parent 1:%PID%2 netem %NETEM%"]
 
-    def __init__(self, interface, host, peers):
+    def __init__(self, interface, host, peers, mode):
         logging.basicConfig(filename=('debug' + str(host["id"])) + '.log', level=logging.DEBUG)
         self.interface = str(interface)
         self.host = host
         self.peers = peers
+        self.mode = mode
 
     def run(self, command):
         logging.info(command)
@@ -106,17 +111,27 @@ class NetemManager:
                     logging.error("error creating qdisc for peer " + str(peer) + "!\n\t" + err)
                     return False
                 else:
-                    for port_to_lock in peer["portsToLock"]:
-                        for peer_address in peer["addressesToLock"]:
-                            err = self.run_commands(self.create_peer_filter_commands,
+                    if self.mode == "local":
+                        for peer_port in peer["portToLock"]:
+                            err = self.run_commands(self.create_peer_filter_commands_local,
                                                     {self.interface_token: self.interface,
                                                      self.destination_id_token: destination_id,
-                                                     self.peer_port_token: str(port_to_lock),
-                                                     self.peer_address_token: peer_address})
+                                                     self.peer_port_token: str(peer_port)})
                             if err:
                                 logging.error("error creating filter for peer " + str(peer) + "!\n\t" + err)
                                 return False
-                    return True
+                        return True
+                    else:
+                        for peer_address in peer["addressesToLock"]:
+                            err = self.run_commands(self.create_peer_filter_commands_gce,
+                                                    {self.interface_token: self.interface,
+                                                     self.destination_id_token: destination_id,
+                                                     self.peer_address_token: str(peer_address)})
+                            if err:
+                                logging.error("error creating filter for peer " + str(peer) + "!\n\t" + err)
+                                return False
+                        return True
+
         except:
             return False
 
@@ -144,7 +159,7 @@ class NetemManager:
 
 
 def run_rpc_server(configuration):
-    netem_manager = NetemManager(configuration["interface"], configuration["host"], configuration["peers"])
+    netem_manager = NetemManager(configuration["interface"], configuration["host"], configuration["peers"], configuration["mode"])
 
     server = SimpleXMLRPCServer(("", configuration["rpcPort"]))
     server.register_instance(netem_manager)
