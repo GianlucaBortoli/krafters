@@ -1,15 +1,16 @@
 #!/usr/bin/python3.4
 
 # Daemon listening for test_executor commands
+import logging
 import timeit
 from functools import partial
 from socketserver import ThreadingMixIn
 from xmlrpc.client import ServerProxy
 from xmlrpc.server import SimpleXMLRPCServer
 import rethinkdb as r
+import requests
 import sys
 import time
-import logging
 # NOTE DO NOT ADD EXTERNAL DEPENDENCIES: THIS SCRIPT HAS TO BE EXECUTED IN A STANDALONE WAY ON VM STARTUP
 
 TEST_DAEMON_PORT = 2082
@@ -19,6 +20,7 @@ RETHINKDB_TABLE_NAME = 'test'
 
 CLUSTER_ACK = None
 CLUSTER_APPEND_PORT = 12366
+GAE_ENDPOINT = "http://krafters-1334.appspot.com/datastore"
 
 
 class MultiThreadXMLRPCServer(ThreadingMixIn, SimpleXMLRPCServer):
@@ -55,12 +57,8 @@ def rethinkdb_append_entry(connection):
 
 
 def datastore_append_entry():
-    pass
-    # try:
-    #     Item(value=DEFAULT_VALUE).put()
-    # except Exception as e:
-    #     logging.warning("Unable to store data on Datastore.")
-    #     logging.warning(e)
+    resp = requests.post(GAE_ENDPOINT, data={"val": DEFAULT_VALUE})
+    return float(resp.text)
 
 
 def cluster_append_entry(cluster_rpc_client):
