@@ -106,10 +106,10 @@ class NetemManager:
                     logging.error("error creating qdisc for peer " + str(peer) + "!\n\t" + err)
                     return False
                 else:
-                    for port_to_lock in peer["portsToLock"]:
+                    for port_to_lock in [peer["portsToLock"][0]]:
                         err = self.run_commands(self.create_peer_filter_commands, {self.interface_token: self.interface,
                                                                                self.destination_id_token: destination_id,
-                                                                               self.peer_port_token: port_to_lock,
+                                                                               self.peer_port_token: str(port_to_lock),
                                                                                self.peer_address_token: peer_address})
                         if err:
                             logging.error("error creating filter for peer " + str(peer) + "!\n\t" + err)
