@@ -6,6 +6,7 @@ import logging
 import sys
 from xmlrpc.server import SimpleXMLRPCServer
 
+
 # NOTE DO NOT ADD EXTERNAL DEPENDENCIES: THIS SCRIPT HAS TO BE EXECUTED IN A STANDALONE WAY ON VM STARTUP
 
 
@@ -39,7 +40,7 @@ class NetemManager:
     modify_outgoing_connections_commands = ["sudo tc qdisc change dev %INTERFACE% parent 1:%PID%2 netem %NETEM%"]
 
     def __init__(self, interface, host, peers):
-        logging.basicConfig(filename=('debug'+str(host["id"]))+'.log', level=logging.DEBUG)
+        logging.basicConfig(filename=('debug' + str(host["id"])) + '.log', level=logging.DEBUG)
         self.interface = str(interface)
         self.host = host
         self.peers = peers
@@ -92,8 +93,7 @@ class NetemManager:
             id = str(self.host["id"])
             qid = str(peer["id"])
             destination_id = id + qid + "2"
-            peer_port = str(peer["port"])
-            peer_address = str(peer["addressToLock"])
+
             err = self.run_commands(self.create_peer_class_commands, {self.interface_token: self.interface,
                                                                       self.destination_id_token: destination_id})
             if err:
@@ -107,19 +107,21 @@ class NetemManager:
                     return False
                 else:
                     for port_to_lock in peer["portsToLock"]:
-                        err = self.run_commands(self.create_peer_filter_commands, {self.interface_token: self.interface,
-                                                                               self.destination_id_token: destination_id,
-                                                                               self.peer_port_token: str(port_to_lock),
-                                                                               self.peer_address_token: peer_address})
-                        if err:
-                            logging.error("error creating filter for peer " + str(peer) + "!\n\t" + err)
-                            return False
+                        for peer_address in peer["addressesToLock"]:
+                            err = self.run_commands(self.create_peer_filter_commands,
+                                                    {self.interface_token: self.interface,
+                                                     self.destination_id_token: destination_id,
+                                                     self.peer_port_token: str(port_to_lock),
+                                                     self.peer_address_token: peer_address})
+                            if err:
+                                logging.error("error creating filter for peer " + str(peer) + "!\n\t" + err)
+                                return False
                     return True
         except:
             return False
 
     def modify_outgoing_connection(self, peer_id, netem_command):
-        print("Command '"+netem_command+"' to outgoing connection received")
+        print("Command '" + netem_command + "' to outgoing connection received")
         try:
             err = self.run_commands(self.modify_outgoing_connections_commands, {self.interface_token: self.interface,
                                                                                 self.peer_id_token: str(

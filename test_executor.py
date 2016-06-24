@@ -56,12 +56,12 @@ class NetemMaster:
     def __init__(self, nodes):
         for n in nodes:
             self.nodes_rpc[str(n["id"])] = Server("http://{}:{}".format(n["address"], str(n["rpcPort"])))
-        for n in nodes:
-            self.nodes_rpc[str(n["id"])].clean_all_qdisc()
-            self.nodes_rpc[str(n["id"])].create_root_qdisc()
-        for n in nodes:
-            if not self.nodes_rpc[str(n["id"])].init_qdisc():
-                raise Exception("[{}] Error initializing qdiscs".format(NETEM_ERROR))
+        # for n in nodes:
+        #     self.nodes_rpc[str(n["id"])].clean_all_qdisc()
+        #     self.nodes_rpc[str(n["id"])].create_root_qdisc()
+        # for n in nodes:
+        #     if not self.nodes_rpc[str(n["id"])].init_qdisc():
+        #         raise Exception("[{}] Error initializing qdiscs".format(NETEM_ERROR))
 
     # modify connection from source to target using netem_command
     def modify_connection(self, source, target, netem_command, bidirectional=False):
