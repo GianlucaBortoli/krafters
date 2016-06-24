@@ -1,1 +1,2 @@
-run 20000
+from all to all set loss 100%
+run 2000
