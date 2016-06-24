@@ -12,7 +12,8 @@ sudo apt-get install -y \
     git \
     gcc
 # fetch network_manager.py
-curl https://raw.githubusercontent.com/GianlucaBortoli/krafters/master/network_manager.py > network_manager.py
+# curl https://raw.githubusercontent.com/GianlucaBortoli/krafters/master/network_manager.py > network_manager.py
+gsutil cp gs://krafters/network_manager.py network_manager.py
 sudo chmod 777 network_manager.py
 # fetch test_daemon.py
 curl https://raw.githubusercontent.com/GianlucaBortoli/krafters/master/test_daemon.py > test_daemon.py

@@ -400,7 +400,6 @@ def main():
         print(e)
         exit(1)
 
-    command_checker.reset()
     print("\nRun completed successfully, results have been saved to {} !\n".format(output_file_path))
 
 

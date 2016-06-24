@@ -1,10 +1,2 @@
-from all to all set duplicate 20%
-run 10
-from all to all set corrupt 20%
-run 10
-from all to all set delay 10ms reorder 25% 50%
-run 10
-from all to all set delay 100ms loss 10%
-run 10
-from all to rand set loss 50%
-run 10
+from all to all set loss 100%
+run 10000

@@ -35,7 +35,6 @@ class NetemManager:
         "sudo tc filter add dev %INTERFACE% protocol ip u32 " +
         "match ip dport %PPORT% 0xffff " +
         "match ip dst %PADDRESS%/32 " +
-        "match ip src %HADDRESS%/32 " +
         "flowid 1:%DID%"]
     modify_outgoing_connections_commands = ["sudo tc qdisc change dev %INTERFACE% parent 1:%PID%2 netem %NETEM%"]
 
@@ -110,9 +109,7 @@ class NetemManager:
                     err = self.run_commands(self.create_peer_filter_commands, {self.interface_token: self.interface,
                                                                                self.destination_id_token: destination_id,
                                                                                self.peer_port_token: peer_port,
-                                                                               self.peer_address_token: peer_address,
-                                                                               self.host_address_token: str(
-                                                                                       self.host["address"])})
+                                                                               self.peer_address_token: peer_address})
                     if err:
                         logging.error("error creating filter for peer " + str(peer) + "!\n\t" + err)
                         return False
