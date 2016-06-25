@@ -48,7 +48,7 @@ def rethinkdb_setup(connection):
 def rethinkdb_append_entry(connection):
 
     global ITERATION
-    value = {"id": ITERATION}
+    value = {"id": DEFAULT_VALUE, "value": ITERATION}
 
 
     try:

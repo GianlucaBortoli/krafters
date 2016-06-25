@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DIR=final_tests/global_rethinkdb
+DIR=final_tests/stability_rethinkdb_5
 
 for testfile in $( ls $DIR/*.test ); do
     printf "[INFO] Starting test %s\n\n" "$testfile"

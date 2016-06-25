@@ -25,13 +25,13 @@ def generateRawPlot(test):
         handle, = plt.plot(xAxis, yAxis, label=label)
         handles.append(handle)
     # put axis labels
-    plt.xlabel("num append")
+    plt.xlabel("operations")
     plt.ylabel("time (s)")
     plt.legend(handles=handles)
 
 def generateDistributionPlot(test):
 
-    sns.set(style="white", palette="muted", color_codes=True)
+    sns.set(color_codes=True)
     for row in test:
         label = row.pop(0)
         d = [float(i) for i in row]

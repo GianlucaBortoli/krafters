@@ -1,5 +1,6 @@
-run 100 delay_0ms
 from all to all set delay 50ms
-run 100 delay_50ms
+run 5000 delay_50ms
 from all to all set delay 100ms
-run 100 delay_100ms
+run 5000 delay_100ms
+from all to all set delay 150ms
+run 5000 delay_150ms
