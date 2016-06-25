@@ -21,6 +21,7 @@ RETHINKDB_TABLE_NAME = 'test'
 CLUSTER_ACK = None
 CLUSTER_APPEND_PORT = 12366
 GAE_ENDPOINT = "http://krafters-1334.appspot.com/datastore"
+ITERATION = 0
 
 
 class MultiThreadXMLRPCServer(ThreadingMixIn, SimpleXMLRPCServer):
@@ -46,7 +47,10 @@ def rethinkdb_setup(connection):
 
 def rethinkdb_append_entry(connection):
     t = timeit.default_timer()
-    value = {'key': DEFAULT_VALUE}
+    global ITERATION
+    value = {str(ITERATION): DEFAULT_VALUE}
+    ITERATION += 1
+
     try:
         r.table(RETHINKDB_TABLE_NAME).insert(value, conflict='replace').run(connection, durability="hard")
         logging.info('key added')
