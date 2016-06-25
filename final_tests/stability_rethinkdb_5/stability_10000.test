@@ -1,3 +1,4 @@
 reset
 run 10000 10000_run_1
+reset
 run 10000 10000_run_2

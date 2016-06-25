@@ -56,6 +56,7 @@ def rethinkdb_append_entry(connection):
         r.table(RETHINKDB_TABLE_NAME).insert(value, conflict='replace').run(connection, durability="hard")
         v = r.table(RETHINKDB_DB_NAME).run(connection, durability="hard")
         ITERATION += 1
+        ITERATION %= 100
         logging.info('key added')
     except:
         logging.error('{} not added'.format(value))

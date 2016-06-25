@@ -1,7 +1,7 @@
-from all to all set loss 2%
-run 100 loss_2
-from all to all set loss 4%
+from all to all set loss 5%
+run 100 loss_5
+from all to all set loss 10%
 run 100 loss_4
-from all to all set loss 6%
-run 100 loss_6
+from all to all set loss 15%
+run 100 loss_15
 
