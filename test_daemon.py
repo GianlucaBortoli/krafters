@@ -39,7 +39,7 @@ def rethinkdb_setup(connection):
     try:
         # r.db_create(RETHINKDB_DB_NAME).run(connection)
         logging.info("Database {} created".format(RETHINKDB_DB_NAME))
-        r.db(RETHINKDB_DB_NAME).table_create(RETHINKDB_TABLE_NAME).run(connection)
+        r.db(RETHINKDB_DB_NAME).table_create(RETHINKDB_TABLE_NAME).run(connection, read_mode='majority')
         logging.info('Db {} and table {} created successfully'.format(RETHINKDB_DB_NAME, RETHINKDB_TABLE_NAME))
     except:
         logging.warning('Database {} already exists'.format(RETHINKDB_DB_NAME))
@@ -53,8 +53,8 @@ def rethinkdb_append_entry(connection):
 
     try:
         t = timeit.default_timer()
-        r.table(RETHINKDB_TABLE_NAME).insert(value, conflict='replace').run(connection, durability="hard")
-        v = r.table(RETHINKDB_DB_NAME, read_mode='majority').run(connection, durability="hard")
+        r.table(RETHINKDB_TABLE_NAME).insert(value, conflict='replace').run(connection, durability="hard", read_mode='majority')
+        v = r.table(RETHINKDB_DB_NAME, read_mode='majority').run(connection, durability="hard", read_mode='majority')
         ITERATION += 1
         ITERATION %= 100
         logging.info('key added')
