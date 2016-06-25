@@ -1,6 +1,0 @@
-from all to all set delay 50ms reorder 50%
-run 5000 reorder_50ms
-from all to all set delay 100ms reorder 50%
-run 5000 reorder_100ms
-from all to all set delay 150ms reorder 50%
-run 5000 reorder_150ms

@@ -54,7 +54,7 @@ def rethinkdb_append_entry(connection):
     try:
         t = timeit.default_timer()
         r.table(RETHINKDB_TABLE_NAME).insert(value, conflict='replace').run(connection, durability="hard")
-        v = r.table(RETHINKDB_DB_NAME).run(connection, durability="hard")
+        v = r.table(RETHINKDB_DB_NAME, read_mode='majority').run(connection, durability="hard")
         ITERATION += 1
         ITERATION %= 100
         logging.info('key added')
