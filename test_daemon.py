@@ -88,7 +88,7 @@ class TestManager:
         self.algorithm_port = algorithm_port
 
         if algorithm == "rethinkdb":
-            self.rdb_connection = r.connect('localhost', self.algorithm_port,  durability="hard")
+            self.rdb_connection = r.connect('localhost', self.algorithm_port)
             logging.info("Connection with RethinkDB successful")
             rethinkdb_setup(self.rdb_connection)
             self.appendFunction = partial(rethinkdb_append_entry, self.rdb_connection)
