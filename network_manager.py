@@ -112,7 +112,7 @@ class NetemManager:
                     return False
                 else:
                     if self.mode == "local":
-                        for peer_port in peer["portToLock"]:
+                        for peer_port in peer["portsToLock"]:
                             err = self.run_commands(self.create_peer_filter_commands_local,
                                                     {self.interface_token: self.interface,
                                                      self.destination_id_token: destination_id,

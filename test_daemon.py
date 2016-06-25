@@ -48,7 +48,7 @@ def rethinkdb_append_entry(connection):
     t = timeit.default_timer()
     value = {'key': DEFAULT_VALUE}
     try:
-        r.table(RETHINKDB_TABLE_NAME).insert(value, conflict='replace').run(connection)
+        r.table(RETHINKDB_TABLE_NAME).insert(value, conflict='replace').run(connection, durability="hard")
         logging.info('key added')
     except:
         logging.error('{} not added'.format(value))
@@ -84,7 +84,7 @@ class TestManager:
         self.algorithm_port = algorithm_port
 
         if algorithm == "rethinkdb":
-            self.rdb_connection = r.connect('localhost', self.algorithm_port)
+            self.rdb_connection = r.connect('localhost', self.algorithm_port,  durability="hard")
             logging.info("Connection with RethinkDB successful")
             rethinkdb_setup(self.rdb_connection)
             self.appendFunction = partial(rethinkdb_append_entry, self.rdb_connection)
