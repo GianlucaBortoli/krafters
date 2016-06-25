@@ -48,13 +48,13 @@ def rethinkdb_setup(connection):
 def rethinkdb_append_entry(connection):
 
     global ITERATION
-    value = {"key": ITERATION}
+    value = {"id": ITERATION}
 
 
     try:
         t = timeit.default_timer()
         r.table(RETHINKDB_TABLE_NAME).insert(value, conflict='replace').run(connection, durability="hard")
-        v = r.table(RETHINKDB_DB_NAME).filter(r.row["key"] == ITERATION).run(connection, durability="hard")
+        v = r.table(RETHINKDB_DB_NAME).run(connection, durability="hard")
         ITERATION += 1
         logging.info('key added')
     except:
