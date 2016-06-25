@@ -84,7 +84,7 @@ def run_paxos_node(port, node_config_file, test_daemon=None):
 
 def configure_rethinkdb_master(cluster_port, driver_port, http_port, canonical_address):
     # the cluster_port is the one to be used for joining the master
-    cmd = "rethinkdb --bind all --cluster-port {cp} --driver-port {dp} --http-port {hp} --canonical-address {ca} &". \
+    cmd = "rethinkdb --cache-size 0 --bind all --cluster-port {cp} --driver-port {dp} --http-port {hp} --canonical-address {ca} &". \
         format(cp=cluster_port, dp=driver_port, hp=http_port, ca=canonical_address)
     subprocess.Popen(cmd, shell=True, stdout=DEVNULL).communicate()
     wait_for_ports([cluster_port, driver_port, http_port], 0.5)
@@ -92,7 +92,7 @@ def configure_rethinkdb_master(cluster_port, driver_port, http_port, canonical_a
 
 
 def configure_rethinkdb_follower(my_id, m_ip, m_cp, my_cp, my_dp, my_hp):
-    cmd = ("rethinkdb --bind all --directory rethinkdb_data{id} "
+    cmd = ("rethinkdb --cache-size 0 --bind all --directory rethinkdb_data{id} "
            "--join {ip}:{m_cp} --cluster-port {my_cp} "
            "--driver-port {my_dp} --http-port {my_hp} &"). \
         format(id=my_id, ip=m_ip, m_cp=m_cp, my_cp=my_cp, my_dp=my_dp, my_hp=my_hp)

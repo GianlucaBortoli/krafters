@@ -48,7 +48,7 @@ def rethinkdb_setup(connection):
 def rethinkdb_append_entry(connection):
     t = timeit.default_timer()
     global ITERATION
-    value = {str(ITERATION): DEFAULT_VALUE}
+    value = {"key": ITERATION}
     ITERATION += 1
 
     try:
