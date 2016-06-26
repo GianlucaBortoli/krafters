@@ -1,3 +1,0 @@
-run 200
-from all to all set delay 100ms
-run 200

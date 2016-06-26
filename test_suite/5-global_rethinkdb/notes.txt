@@ -1,0 +1,2 @@
+ognuno per conto suo pmf
+sul delay mettere anche distribuzione per far vedere che 5ms influenzano 20ms (4 messaggi = 15x4-10x4=5x4 = 20)

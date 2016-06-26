@@ -1,0 +1,3 @@
+baseline + delay (entrambi insieme sullo stesso grafico tutti  e 4) sia distrib che pmf
+baseline + loss (entrambi insieme sullo stesso grafico tutti  e 4) sia distrib che pmf
+in totale 4 graphs

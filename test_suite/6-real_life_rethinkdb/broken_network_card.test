@@ -1,0 +1,15 @@
+reset
+from 5 to all bidirectional set corrupt 5%
+run 5000 5_defective_network_card
+reset
+from 4 to all bidirectional set corrupt 5%
+run 5000 4_defective_network_card
+reset
+from 3 to all bidirectional set corrupt 5%
+run 5000 3_defective_network_card
+reset
+from 2 to all bidirectional set corrupt 5%
+run 5000 2_defective_network_card
+reset
+from 1 to all bidirectional set corrupt 5%
+run 5000 1_defective_network_card

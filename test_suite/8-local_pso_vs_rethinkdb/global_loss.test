@@ -1,0 +1,4 @@
+from all to all set loss 4%
+run 5000 loss_4
+
+

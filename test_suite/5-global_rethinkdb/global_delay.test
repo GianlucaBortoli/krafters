@@ -1,0 +1,6 @@
+from all to all set delay 10ms
+run 5000 delay_10ms
+from all to all set delay 15ms
+run 5000 delay_15ms
+from all to all set delay 20ms
+run 5000 delay_20ms

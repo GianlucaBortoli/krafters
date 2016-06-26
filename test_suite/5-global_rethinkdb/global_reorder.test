@@ -1,0 +1,6 @@
+from all to all set delay 20ms reorder 50%
+run 5000 reorder_10ms
+from all to all set delay 30ms reorder 50%
+run 5000 reorder_20ms
+from all to all set delay 40ms reorder 50%
+run 5000 reorder_30ms

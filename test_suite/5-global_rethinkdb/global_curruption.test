@@ -1,0 +1,7 @@
+from all to all set corrupt 2%
+run 5000 corrupt_2
+from all to all set corrupt 4%
+run 5000 corrupt_4
+from all to all set corrupt 6%
+run 5000 corrupt_6
+

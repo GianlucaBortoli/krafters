@@ -29,6 +29,7 @@ def generateRawPlot(test):
     plt.ylabel("time (s)")
     plt.legend(handles=handles)
 
+
 def generateDistributionPlot(test):
 
     sns.set(color_codes=True)
@@ -38,6 +39,9 @@ def generateDistributionPlot(test):
         # Plot a filled kernel density estimate
         sns.distplot(d, hist=False, kde_kws={"shade": True}, label=label)
     plt.xlim([-0.01, 0.1])
+    plt.xlabel("time (s)")
+    plt.ylabel("operations")
+
 
 def generateMassPlot(test):
     # set figure size
@@ -80,7 +84,7 @@ def main():
         print("File '{}' not found".format(args.result_csv))
 
     if not args.output_file_path:
-        if len(args.result_csv) >1 :
+        if len(args.result_csv) > 1:
             print("You must specify a output file name if you are printing a multiple file graph!")
             exit(1)
         output_file = args.result_csv[0]+".png"
