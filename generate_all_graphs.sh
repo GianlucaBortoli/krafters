@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DIR=final_tests/global_rethinkdb
+DIR=$1
 
 for csv in $( ls $DIR/*.csv ); do
     printf "\n[INFO]Generating graph for file %s\n..." "$csv"
