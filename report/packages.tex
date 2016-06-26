@@ -1,0 +1,154 @@
+%!TEX root=thesis.tex
+\usepackage[
+  pdftex,
+  plainpages=false,
+  colorlinks,
+  hyperindex,
+  pdfpagemode=UseNone,
+  bookmarksopen,
+  linkcolor=black,
+  citecolor=black,
+  urlcolor=black]{hyperref}
+\usepackage{graphicx}
+\usepackage[boxed]{algorithm}
+\usepackage{setspace}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{subfigure}
+\usepackage[utf8]{inputenc}
+\usepackage[nocompress]{cite}
+\usepackage[show]{chato-notes}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{amsmath}
+\usepackage{mathtools}
+\usepackage{url}
+\usepackage{listings}
+\usepackage{xcolor}
+
+%syntax highlighting for code
+\lstset{%
+  language=C++,
+  basicstyle=\ttfamily,
+  keywordstyle=\color{blue}\ttfamily,
+  stringstyle=\color{red}\ttfamily,
+  commentstyle=\color{green}\ttfamily,
+  morecomment=[l][\color{magenta}]{\#}
+}
+
+\lstdefinelanguage{XML}{%
+  morestring=[b]",
+  morestring=[s]{>}{<},
+  morecomment=[s]{<?}{?>},
+  stringstyle=\color{black},
+  identifierstyle=\color{blue},
+  keywordstyle=\color{cyan},
+  morekeywords={xmlns,version,type}% list your attributes here
+}
+%end syntax highlighting
+
+\DeclarePairedDelimiter{\ceil}{\lceil}{\rceil}
+\graphicspath{{img/}} % Specifies the directory where pictures are stored
+
+\hypersetup{
+    unicode=true,          % non-Latin characters in Acrobats bookmarks
+    pdftoolbar=true,        % show Acrobats toolbar?
+    pdfmenubar=true,        % show Acrobats menu?
+    pdffitwindow=false,     % window fit to page when opened
+    pdfstartview={FitH},    % fits the width of the page to the window
+    pdftitle={My title},    % title
+    pdfauthor={Author},     % author
+    pdfsubject={Subject},   % subject of the document
+    pdfcreator={Creator},   % creator of the document
+    pdfproducer={Producer}, % producer of the document
+    pdfnewwindow=true,      % links in new window
+    colorlinks=true,       % false: boxed links; true: colored links
+    linkcolor=black,          % color of internal links
+    citecolor=black,        % color of links to bibliography
+    filecolor=black,      % color of file links
+    urlcolor=black           % color of external links
+}
+\newcommand{\spara}[1]{\smallskip\noindent{\bf #1}}
+\newcommand{\mpara}[1]{\medskip\noindent{\bf #1}}
+\newcommand{\para}[1]{\noindent{\bf #1}}
+
+\newtheorem{definition}{Definition}
+\newtheorem{proposition}{Proposition}
+\newtheorem{property}{Property}
+\newtheorem{theorem}{Theorem}
+\newtheorem{corollary}{Corollary}
+\newtheorem{claim}{Claim}
+\newtheorem{example}{Example}
+\newtheorem{lemma}{Lemma}
+\newtheorem{problem}{Problem}
+\newtheorem{assumption}{Assumption}
+\newtheorem{observation}{Observation}
+
+
+
+\newcommand{\Abs}[1]{\left|#1\right|}
+\newcommand{\Tuple}[1]{\left<#1\right>}
+\newcommand{\Set}[1]{\left\{#1\right\}}
+\newcommand{\List}[1]{\left[#1\right]}
+\newcommand{\Paren}[1]{\left(#1\right)}
+\newcommand{\Binom}[2]{\left(#1 \atop #2\right)}
+\newcommand{\Floor}[1]{\left\lfloor #1 \right\rfloor}
+\newcommand{\Ceil}[1]{\left\lceil #1 \right\rceil}
+\newcommand{\IntO}[1]{\left(#1\right)}
+\newcommand{\IntC}[1]{\left[#1\right]}
+\newcommand{\IntLO}[1]{\left(#1\right]}
+\newcommand{\IntRO}[1]{\left[#1\right)}
+\newcommand{\Choose}[2]{\left( #1 \atop #2\right)}
+
+\newcommand{\sharpP}{{\bf \#P}}
+\newcommand{\NP}{$\mathbf{NP}$}
+\newcommand{\NPhard}{$\mathbf{NP}$-hard}
+\newcommand{\NPcomplete}{$\mathbf{NP}$-complete}
+\newcommand{\SPcomplete}{$\mathbf{\#P}$-complete}
+\newcommand{\SPhard}{$\mathbf{\#P}$-hard}
+
+\renewcommand{\algorithmicrequire}{\textbf{Input:}}
+\renewcommand{\algorithmicensure}{\textbf{Output:}}
+\renewcommand{\vec}[1]{\mathbf{#1}}
+
+\usepackage{amssymb}% http://ctan.org/pkg/amssymb
+\usepackage{pifont}% http://ctan.org/pkg/pifont
+\newcommand{\cmark}{\ding{51}}%
+\newcommand{\xmark}{\ding{55}}%
+
+\usepackage{listings} % Source code support
+\usepackage{etoolbox}
+
+\lstset{ %
+%  backgroundcolor=\color{myBlack},   % choose the background color; you must
+  % add \usepackage{color} or \usepackage{xcolor}
+  basicstyle=\ttfamily\footnotesize\color{black},        % the size of the fonts
+  % that are used for the code
+  breakatwhitespace=false,         % sets if automatic breaks should only happen at whitespace
+  breaklines=true,                 % sets automatic line breaking
+  captionpos=b,                    % sets the caption-position to bottom
+%  commentstyle=\color{grey},       % comment style
+  deletekeywords={...},            % if you want to delete keywords from the given language
+  escapeinside={\%*}{*)},          % if you want to add LaTeX within your code
+  extendedchars=true,              % lets you use non-ASCII characters; for 8-bits encodings only, does not work with UTF-8
+  frame=single,                    % adds a frame around the code
+  keepspaces=true,                 % keeps spaces in text, useful for keeping indentation of code (possibly needs columns=flexible)
+  keywordstyle=\color{red},       % keyword style
+ % language=go,                 % the language of the code
+  morekeywords={*,...},            % if you want to add more keywords to the set
+  numbers=left,                    % where to put the line-numbers; possible values are (none, left, right)
+  numbersep=5pt,                   % how far the line-numbers are from the code
+ % numberstyle=\tiny\color{myGray}, % the style that is used for the
+  % line-numbers
+%  rulecolor=\color{white},         % if not set, the frame-color may be changed on line-breaks within not-black text (e.g. comments (green here))
+  showspaces=false,                % show spaces everywhere adding particular underscores; it overrides 'showstringspaces'
+  showstringspaces=false,          % underline spaces within strings only
+  showtabs=false,                  % show tabs within strings adding particular underscores
+  stepnumber=1,                    % the step between two line-numbers. If it's 1, each line will be numbered
+  stringstyle=\color{green},     % string literal style
+  tabsize=2,                       % sets default tabsize to 2 spaces
+  title=\lstname                   % show the filename of files included with \lstinputlisting; also try caption instead of title
+}
+
+\usepackage[toc,page]{appendix}		% appendice
+\usepackage{lscape}

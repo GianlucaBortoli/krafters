@@ -1,0 +1,68 @@
+\makeatletter
+\setcounter{tocdepth}{4}
+\oddsidemargin 0.5in \evensidemargin 0.5in
+\marginparwidth 40pt \marginparsep 15pt
+\topmargin 0pt \headsep 0.5in
+\textheight 8.1in \textwidth 5.7in
+
+\def\titlep{%
+	\thispagestyle{empty}%
+        \null%
+	\begin{center}
+                 {\Large \uppercase{UNIVERSITY OF TRENTO}}\\
+                 %\uppercase{Department of Information Engineering and\\Computer Science}\\
+                 \footnotesize{\uppercase{Department of Information Engineering and Computer Science}}\\
+                 \vskip 5 mm
+		 \begin{figure}[h]
+			\centering
+			\includegraphics[width=30mm, keepaspectratio]{img/logo}
+		 \end{figure}
+		\vskip 0.5 cm
+%                 Corso di Laurea in INFORMATICA
+				Distributed algorithms course
+		\vskip 0.5 cm
+		\hrule
+		\vskip 5 mm
+%		Elaborato Finale
+		Final report
+	\end{center}
+     	\vfill
+	\begin{center}
+		{\Large\uppercase\expandafter{\@title}}
+	\end{center}
+	\vfill
+
+\begin{center}
+\begin{tabular}{llll}
+%Relatore:  &{\large \principaladviser} &\hspace{20 mm}Laureando: &{\large \autore}\\
+Professor:  &{\large \principaladviser} \\
+Students: &{\large \autore}
+%{\large Correlatore:} &\firstreader
+\end{tabular}
+\end{center}
+
+\vfill
+\begin{center}
+%     \sc anno accademico \annoacc
+     \sc academic year \annoacc
+
+\end{center}
+% \vskip.5in
+
+\newpage
+\thispagestyle{empty}
+}
+\pagestyle{plain}
+
+\makeatother
+
+%
+% % PAGE HEADERS
+%    \pagestyle{headings}
+%    \renewcommand{\chaptermark}[1]{\markboth{{\chaptername}\ \thechapter.\hspace{1em}#1}{}}
+%
+% % definisce l'header e il footer
+%    \lhead[\fancyplain{}{}]{\fancyplain{}{\leftmark}} \chead{} \rhead{\thepage}
+%   \lfoot{} \cfoot{} \rfoot{}
+%
+

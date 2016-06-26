@@ -1,0 +1,52 @@
+\documentclass[11pt,a4paper,twoside,openright]{book}
+
+\input{packages} % load packages config
+\usepackage{frontmatter} % first page layout and meta
+
+%\linespread{1.2}  % max 1.3
+\setstretch{1.3}  % interline spacing. Please set as 1 for drafts.
+
+\begin{document}
+
+% Template settings
+\title{KRAFTERS: \\A platform for distributed system testing}
+\providecommand{\autore}{Federici Marco, Bortoli Gianluca, Taneburgo Gianvito}
+\providecommand{\principaladviser}{Alberto Montresor}
+\providecommand{\annoacc}{2015-2016}
+
+% generate first page
+\titlep
+
+% indexes
+\frontmatter
+\pagenumbering{Roman}
+
+\tableofcontents
+
+\clearpage
+\pagestyle{headings}
+\renewcommand{\chaptermark}[1]{\markboth{{\chaptername}\ \thechapter.\hspace{1em}#1}{}}
+
+% ------------------
+% TEXT STARTS HERE
+% ------------------
+\mainmatter
+
+\input{sections/introduction}
+\input{sections/platform_architecture}
+\input{sections/testing_language}
+\input{sections/test_suite}
+\input{sections/conclusion}
+
+%\pagestyle{plain}
+\renewcommand{\chaptermark}[1]{\markboth{{\appendixname}\ \thechapter.\hspace{1em}#1}{}}
+
+%\appendix
+%\input{sections/appendix.tex}
+
+%\clearpage
+%\addcontentsline{toc}{chapter}{References}
+%\bibliographystyle{plain}
+%\bibliography{bibliography}
+
+\end{document}
