@@ -25,16 +25,8 @@
 \usepackage{url}
 \usepackage{listings}
 \usepackage{xcolor}
-
-%syntax highlighting for code
-\lstset{%
-  language=C++,
-  basicstyle=\ttfamily,
-  keywordstyle=\color{blue}\ttfamily,
-  stringstyle=\color{red}\ttfamily,
-  commentstyle=\color{green}\ttfamily,
-  morecomment=[l][\color{magenta}]{\#}
-}
+\usepackage{csquotes}
+\usepackage{amsmath}
 
 \lstdefinelanguage{XML}{%
   morestring=[b]",
@@ -99,7 +91,7 @@
 \newcommand{\IntLO}[1]{\left(#1\right]}
 \newcommand{\IntRO}[1]{\left[#1\right)}
 \newcommand{\Choose}[2]{\left( #1 \atop #2\right)}
-
+\newcommand{\tab}[1][1cm]{\hspace*{#1}}
 \newcommand{\sharpP}{{\bf \#P}}
 \newcommand{\NP}{$\mathbf{NP}$}
 \newcommand{\NPhard}{$\mathbf{NP}$-hard}

@@ -1,2 +1,52 @@
 %!TEX root=../report.tex
 \chapter{Testing language}\label{chp:testing_language}
+
+A specific language has been designed in order to provide a flexible tool for testing. It is composed by three different kinds of instructions: network modification commands, the run command and macros designed to provide handful shortcuts to simplify the writing and the understanding of the test files. Each command consists in a single line in the test file and an id is assigned to each node to identify it.
+
+\section{Network modification commands}
+This set of commands can be used to modify the network status affecting the nodes in the cluster. They are composed of two parts: the first one specifies the connection to address, while the second represents the netem rule to apply.
+
+\subsection{Connection specifications}
+Each connection can be either selected at random or be referred by a couple (source, destination).
+While picking random connection does not grant a lot of flexibility, source and target nodes definition allows users to create much more complex network simulations.\\
+A specific node id can be referred as well as a random one in the cluster by means of the “rand” keyword. Each time it is used, a node id is chosen at random from the ones that are not referred in the context of the same command. This restriction prevents from applying network modifications that would affect the link from a node to itself (loopback).\\
+Moreover, set of nodes can be used both as source and destination in order to allow users to enumerate multiple connection at once. In this case every couple (source i, destination j) belonging to the cartesian product between source set i and destination set j will be affected. Therefore, the keyword “all” has been added to identify the set of all nodes in the network.\\
+Instead of addressing a single direction of a connection, rules can be easily applied to both using the handy “bidirectional” keyword.
+Finally, a specific syntax (i.e. “on n connections”) has been introduced to affect n random connections without the need to specify any source or destination.
+
+\subsection{Examples}
+\begin{itemize}
+  \item \emph{from 2 to 3 set delay 100ms} \\
+  IP packets from node with id 2 to node with id 3 are delayed by 100 milliseconds.
+  \item \emph{from 1 to rand bidirectional set loss 10\%} \\
+  every packet from node 1 to another random node (apart from node 1) has a 0.1 probability of being dropped. The same rule affects the channel also from the random node to node 1 because of the “bidirectional” keyword.
+  \item \emph{from rand 2 to all set corrupt 20\%} \\
+  20\% of packets sent by node 2 and another random node (anyone but node 2, because has already been referred) to any other node will be corrupted.
+  \item \emph{on 5 connections set delay 1s} \\
+  apply a 1s delay on 5 connection chosen at random in the network.
+\end{itemize}
+
+\section{Run command}
+The run command is responsible for running the consensus protocol on the cluster, collecting the resulting times from the test daemon and saving them into a csv file. The user can specify how many operations he wants to run and a label to be applied to the data results. Consensus time measurement can vary according to the algorithm specific implementation in the test daemon \ref{test_daemon}.
+
+\subsection{Example}
+\begin{itemize}
+  \item \emph{run 1000 delay\_100ms} \\
+  ask the test daemon to perform 1000 operations, collect times and save a row labelled \emph{delay\_100ms} in the csv file.
+\end{itemize}
+
+\section{Macros}
+Loops and network reset commands have been also added to the testing language. They do not directly add expressive power to the language, but they provide a handy way to write very common and standard rules.\\
+The first one consists in two instructions, “do” and “n times”. The command “do” specifies the beginning of the sequence of instructions that have to be repeated, while “n times” specifies both the end of the loop and the number of repetitions.\\
+A “reset” command has been introduced to reset the network status, removing every modification that has been applied so far by the program.
+
+\subsection{Example}
+\begin{itemize}
+  \item 
+  \emph{do\\
+    \tab from all to rand set delay 100ms\\
+    \tab run 1000\\
+    \tab reset\\
+  5 times}\\
+  apply the \emph{delay 100ms} netem command on the incoming all the incoming connection to a random node, then runs 1000 consensus and, then, reset the network status. These three operation are repeated 5 times. The “rand” keyword can be resolved with a different node id every time is repeated.
+\end{itemize}

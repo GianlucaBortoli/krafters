@@ -1,2 +1,34 @@
 %!TEX root=../report.tex
 \chapter{Platform architecture}\label{chp:platform_arch}
+
+A testing platform has been developed in order to easily evaluate the chosen implementations of the algorithms in different conditions. The architecture of the platform has been designed with two main goals: extendability and test efficiency. In fact, the platform can be easily enriched to support new implementations with little effort, by adding small pieces of code only in some specific components. The other key target is to minimize the overhead introduced by the architecture itself during the testing phase.
+The platform is composed by five main components, encoded in different Python programs: a provisioner, a test daemon, a network manager and a test executor. A diagram of these components is represented in figure \ref{testing}.
+
+\begin{figure}[H]
+  \makebox[\textwidth][c]{\includegraphics[width=0.4\paperwidth]{testing.png}}
+  \caption{Testing platform architecture overview.}
+  \label{testing}
+\end{figure}
+
+\section{The provisioner}
+The provisioner is the tool executed before any kind of test is performed. It is is responsible for initializing a cluster of an arbitrary number of nodes and running an algorithm at choice. The cluster can be either launched in a pseudo-distributed mode on the the machine running the script or in a fully-distributed mode on rented virtual machines in the cloud. In the first case, each node will consist in a set of processes running on the local machine; in the latter, nodes will be independent instances of Compute Engine, Google’s Infrastructure-as-a-service that is able to provide virtual machines across the world, linked by fiber network. The provisioner is thus capable of setting up two kind of environments where tests can be executed, one local and one in the cloud. This flexibility enables the platform to execute each test in the most suitable environment for the kind of operations planned. For instance, it might not be meaningful to test network communication delays locally or to measure the influence of some artificially-introduced noise in a cloud environment subject to other interfering factors, like network latency.
+
+\begin{figure}[H]
+  \makebox[\textwidth][c]{\includegraphics[width=0.3\paperwidth]{actors.png}}
+  \caption{Provisioner architecture diagram.}
+  \label{actors}
+\end{figure}
+
+When configuring a pseudo-distributed cluster, the provisioner starts one process for every node and runs the consensus algorithm on each of them as in figure \ref{actors}. If required by the implementation, additional operations are locally executed to properly configure the cluster. A network managers is then launched and binded to every node. Finally, a test daemon is started and binded to an arbitrary node.\\
+On the contrary, the deployment in the cloud involves more steps and requires an additional component to be completed, the configure daemon. To set up a fully-distributed cluster, first, the provisioner uses the Compute Engine API to spin up in a data center as many virtual machines as the number of nodes, attaching a startup script on each of them that will be automatically executed on boot.\\
+Every node will run Ubuntu 15.10 on one virtual CPU and 3.75 GB of memory. The startup script downloads on the virtual machine some platform components and the dependencies required by the algorithm. Finally, it runs a configure daemon. This daemon allows the provisioner to remotely configure the cluster. In this way a test daemon is also started on an arbitrary node.\\
+In both cases the final situation after the deployment resembles the one depicted in the picture \ref{testing}, with multiple nodes connected together, each of them running a configure daemon and a network manager. The test daemon is executed on one of them.
+
+\section{The network manager}
+The network manager is the component responsible for controlling the network underlying every node. The script uses netem \footnote{\url{http://www.linuxfoundation.org/collaborate/workgroups/networking/netem}}, a low-level kernel tool interacting directly with the network card in order to minimize the interference of this component on the tests. Netem is capable of adding or removing filter rules on the incoming and outgoing packets that are applied before they are dispatched to upper layers of the ISO-OSI stack. The network manager is thus able to corrupt, reorder, delay or lose IP packets in many different ways with minimal overhead on the system. At the same time, the great flexibility of the filters syntax makes modelling some real-life scenarios (e.g. network congestion, partitioned nodes, etc.) very easy.
+
+\section{The test daemon} \label{test_daemon}
+The test daemon is a component running only on one node of the cluster. It measures the time required by the consensus algorithm to complete a number of operations specified in input when invoked by the test executor. The unitary operation involves sending a new value to the nodes and wait until they reach consensus. The way this operation is completed differs from one algorithm to another and may involve synchronous API calls, system calls or other kind of interactions. All the operations are executed sequentially and measured individually in a way such that only the effective consensus time is taken into account (external communication overhead is excluded with implementation-specific techniques). The daemon responds to the test executor with the collected times only when the requested number of operations has been successfully completed. 
+
+\section{The test executor}
+The test executor provides the user a way to interact with the cluster. It can be used to perform tests encoded in a particular language (more details are provided in the next chapter) and outputs a csv file with the results. 

@@ -1,5 +1,24 @@
 \contentsline {chapter}{\numberline {1}Introduction}{1}{chapter.1}
 \contentsline {chapter}{\numberline {2}Platform architecture}{3}{chapter.2}
-\contentsline {chapter}{\numberline {3}Testing language}{5}{chapter.3}
-\contentsline {chapter}{\numberline {4}Test suite}{7}{chapter.4}
-\contentsline {chapter}{\numberline {5}Conclusion}{9}{chapter.5}
+\contentsline {section}{\numberline {2.1}The provisioner}{4}{section.2.1}
+\contentsline {section}{\numberline {2.2}The network manager}{6}{section.2.2}
+\contentsline {section}{\numberline {2.3}The test daemon}{6}{section.2.3}
+\contentsline {section}{\numberline {2.4}The test executor}{6}{section.2.4}
+\contentsline {chapter}{\numberline {3}Testing language}{7}{chapter.3}
+\contentsline {section}{\numberline {3.1}Network modification commands}{7}{section.3.1}
+\contentsline {subsection}{\numberline {3.1.1}Connection specifications}{7}{subsection.3.1.1}
+\contentsline {subsection}{\numberline {3.1.2}Examples}{8}{subsection.3.1.2}
+\contentsline {section}{\numberline {3.2}Run command}{8}{section.3.2}
+\contentsline {subsection}{\numberline {3.2.1}Example}{9}{subsection.3.2.1}
+\contentsline {section}{\numberline {3.3}Macros}{9}{section.3.3}
+\contentsline {subsection}{\numberline {3.3.1}Example}{9}{subsection.3.3.1}
+\contentsline {chapter}{\numberline {4}Test suite}{11}{chapter.4}
+\contentsline {section}{\numberline {4.1}Tuning the number of operations}{12}{section.4.1}
+\contentsline {section}{\numberline {4.2}Choosing the cluster size}{16}{section.4.2}
+\contentsline {section}{\numberline {4.3}Test suite description}{16}{section.4.3}
+\contentsline {subsection}{\numberline {4.3.1}Gold standard}{16}{subsection.4.3.1}
+\contentsline {subsection}{\numberline {4.3.2}Symmetric scenarios}{20}{subsection.4.3.2}
+\contentsline {subsection}{\numberline {4.3.3}Asymmetric scenarios}{25}{subsection.4.3.3}
+\contentsline {subsection}{\numberline {4.3.4}Raft vs Paxos}{27}{subsection.4.3.4}
+\contentsline {subsection}{\numberline {4.3.5}Raft vs Raft}{27}{subsection.4.3.5}
+\contentsline {chapter}{\numberline {5}Conclusion}{29}{chapter.5}
