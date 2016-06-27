@@ -1,5 +1,0 @@
-do
-   reset
-   from rand rand to rand rand rand bidirectional set delay 100ms 10ms distribution normal
-   run 5000 partition_delay
-4 times

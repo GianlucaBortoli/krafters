@@ -1,0 +1,5 @@
+do
+   reset
+   from rand rand to rand rand rand bidirectional set delay 15ms
+   run 5000 partition_delay
+4 times

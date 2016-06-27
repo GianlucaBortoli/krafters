@@ -67,7 +67,6 @@ debug.log
 
 # tmp data
 *.swp
-*.csv
 *.*~
 
 # cluster config file
